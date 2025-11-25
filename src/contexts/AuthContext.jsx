@@ -1,0 +1,154 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+
+const AuthContext = createContext();
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tokens, setTokens] = useState(() => {
+    const saved = localStorage.getItem('shortify_tokens');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Base API configuration
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+  // Axios interceptor for automatic token refresh
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && tokens?.refresh_token) {
+          try {
+            const refreshResponse = await axios.post(`${API_BASE}/api/auth/refresh`, {
+              refresh_token: tokens.refresh_token
+            });
+            
+            const newTokens = {
+              ...tokens,
+              access_token: refreshResponse.data.access_token,
+              token_type: refreshResponse.data.token_type
+            };
+            
+            setTokens(newTokens);
+            localStorage.setItem('shortify_tokens', JSON.stringify(newTokens));
+            
+            // Retry the original request with new token
+            error.config.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
+            return axios.request(error.config);
+          } catch (refreshError) {
+            if (refreshError.response?.status === 403) {
+              // Refresh token expired, logout user
+              logout();
+            }
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [tokens]);
+
+  // Set user data on token change
+  useEffect(() => {
+    if (tokens) {
+      setUser({ 
+        id: tokens.userid,
+        isAuthenticated: true 
+      });
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  }, [tokens]);
+
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API_BASE}/api/auth/register`, userData);
+      
+      const tokenData = {
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+        token_type: response.data.token_type,
+        userid: response.data.userid
+      };
+      
+      setTokens(tokenData);
+      localStorage.setItem('shortify_tokens', JSON.stringify(tokenData));
+      
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Registration failed';
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email, password) => {
+    try {
+      setLoading(true);
+      // Assuming you have a separate login endpoint
+      const response = await axios.post(`${API_BASE}/api/auth/login`, {
+        email,
+        password
+      });
+      
+      const tokenData = {
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+        token_type: response.data.token_type,
+        userid: response.data.userid
+      };
+      
+      setTokens(tokenData);
+      localStorage.setItem('shortify_tokens', JSON.stringify(tokenData));
+      
+      return { success: true, message: 'Login successful' };
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Login failed';
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setTokens(null);
+    setUser(null);
+    localStorage.removeItem('shortify_tokens');
+  };
+
+  const getAuthHeader = () => {
+    return tokens ? `Bearer ${tokens.access_token}` : null;
+  };
+
+  const value = {
+    user,
+    tokens,
+    loading,
+    register,
+    login,
+    logout,
+    getAuthHeader,
+    API_BASE
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
