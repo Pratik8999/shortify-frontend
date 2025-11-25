@@ -125,10 +125,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setTokens(null);
-    setUser(null);
-    localStorage.removeItem('shortify_tokens');
+  const logout = async () => {
+    try {
+      // If we have tokens, try to logout via API
+      if (tokens?.access_token && tokens?.refresh_token) {
+        await axios.post(`${API_BASE}/api/auth/logout`, {
+          refresh_token: tokens.refresh_token
+        }, {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`
+          }
+        });
+        // Success (200) - server logout successful
+        console.log('Server logout successful');
+      }
+    } catch (error) {
+      // Handle both 400 (expired refresh token) and other errors
+      if (error.response?.status === 400) {
+        console.log('Refresh token expired, but logging out anyway');
+      } else {
+        console.log('Logout API failed, but logging out locally anyway');
+      }
+      // Continue with local logout regardless of API response
+    } finally {
+      // Always perform local logout regardless of API call result
+      setTokens(null);
+      setUser(null);
+      localStorage.removeItem('shortify_tokens');
+    }
   };
 
   const getAuthHeader = () => {
