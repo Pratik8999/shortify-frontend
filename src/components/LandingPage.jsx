@@ -125,7 +125,7 @@ const LandingPage = () => {
                 setIsLogin(true);
                 setShowAuthModal(true);
               }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
             >
               Login
             </button>
@@ -134,7 +134,7 @@ const LandingPage = () => {
                 setIsLogin(false);
                 setShowAuthModal(true);
               }}
-              className="px-5 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-300"
+              className="px-5 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-300 cursor-pointer"
             >
               Sign Up
             </button>
@@ -165,7 +165,7 @@ const LandingPage = () => {
                   setIsLogin(false);
                   setShowAuthModal(true);
                 }}
-                className="px-7 py-3 text-base bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="px-7 py-3 text-base bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
               >
                 Start Shortening URLs →
               </button>
@@ -174,7 +174,7 @@ const LandingPage = () => {
                   setIsLogin(true);
                   setShowAuthModal(true);
                 }}
-                className="px-7 py-3 text-base border-2 border-gray-300 text-gray-700 font-semibold rounded-full hover:border-gray-400 hover:shadow-md transition-all duration-300 transform hover:scale-105"
+                className="px-7 py-3 text-base border-2 border-gray-300 text-gray-700 font-semibold rounded-full hover:border-gray-400 hover:shadow-md transition-all duration-300 transform hover:scale-105 cursor-pointer"
               >
                 Sign In to Dashboard
               </button>
@@ -229,8 +229,8 @@ const LandingPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-3">Enterprise Security</h3>
-              <p className="text-gray-600 text-sm">Military-grade encryption, spam protection, and malware scanning for all links</p>
+              <h3 className="text-lg font-semibold mb-3">Secure & Private</h3>
+              <p className="text-gray-600 text-sm">Secure authentication, encrypted data storage, and private link management</p>
             </div>
           </div>
         </div>
@@ -299,7 +299,7 @@ const LandingPage = () => {
           <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -401,7 +401,7 @@ const LandingPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 cursor-pointer"
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
@@ -417,7 +417,7 @@ const LandingPage = () => {
             <div className="mt-6 text-center">
               <button
                 onClick={toggleAuthMode}
-                className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm sm:text-base"
+                className="text-blue-600 hover:text-blue-800 font-medium transition-colors text-sm sm:text-base cursor-pointer"
               >
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </button>

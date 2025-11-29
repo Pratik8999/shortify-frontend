@@ -22,6 +22,16 @@ export const AuthProvider = ({ children }) => {
   // Base API configuration
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+  // Global axios interceptor for ngrok header
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use((config) => {
+      config.headers['ngrok-skip-browser-warning'] = '69420';
+      return config;
+    });
+
+    return () => axios.interceptors.request.eject(requestInterceptor);
+  }, []);
+
   // Axios interceptor for automatic token refresh
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -31,6 +41,10 @@ export const AuthProvider = ({ children }) => {
           try {
             const refreshResponse = await axios.post(`${API_BASE}/api/auth/refresh`, {
               refresh_token: tokens.refresh_token
+            }, {
+              headers: {
+                'Content-Type': 'application/json'
+              }
             });
             
             const newTokens = {
@@ -76,7 +90,9 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await axios.post(`${API_BASE}/api/auth/register`, userData);
+      const response = await axios.post(`${API_BASE}/api/auth/register`, userData, {
+        headers: getHeaders(false)
+      });
       
       const tokenData = {
         access_token: response.data.access_token,
@@ -104,6 +120,8 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password
+      }, {
+        headers: getHeaders(false)
       });
       
       const tokenData = {
@@ -132,19 +150,17 @@ export const AuthProvider = ({ children }) => {
         await axios.post(`${API_BASE}/api/auth/logout`, {
           refresh_token: tokens.refresh_token
         }, {
-          headers: {
-            Authorization: `Bearer ${tokens.access_token}`
-          }
+          headers: getHeaders(true)
         });
         // Success (200) - server logout successful
-        console.log('Server logout successful');
+        // console.log('Server logout successful');
       }
     } catch (error) {
       // Handle both 400 (expired refresh token) and other errors
       if (error.response?.status === 400) {
-        console.log('Refresh token expired, but logging out anyway');
+        // console.log('Refresh token expired, but logging out anyway');
       } else {
-        console.log('Logout API failed, but logging out locally anyway');
+        // console.log('Logout API failed, but logging out locally anyway');
       }
       // Continue with local logout regardless of API response
     } finally {
@@ -159,6 +175,93 @@ export const AuthProvider = ({ children }) => {
     return tokens ? `Bearer ${tokens.access_token}` : null;
   };
 
+  const getHeaders = (includeAuth = true) => {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (includeAuth) {
+      const authHeader = getAuthHeader();
+      if (authHeader) {
+        headers.Authorization = authHeader;
+      }
+    }
+    
+    return headers;
+  };
+
+  const fetchUrls = async (page = 1, limit = 10) => {
+    try {
+      const authHeader = getAuthHeader();
+      if (!authHeader) {
+        return { success: false, message: 'Not authenticated' };
+      }
+
+      const response = await axios.get(`${API_BASE}/api/url-shortner/`, {
+        params: { page, limit },
+        headers: getHeaders(true)
+      });
+
+      return {
+        success: true,
+        data: response.data.data || [],
+        pagination: response.data.pagination || {
+          current_page: page,
+          next_page: null,
+          prev_page: null,
+          total_pages: 1,
+          total_items: 0
+        }
+      };
+    } catch (error) {
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Failed to fetch URLs';
+      return { success: false, message };
+    }
+  };
+
+  const getProfile = async () => {
+    try {
+      const authHeader = getAuthHeader();
+      if (!authHeader) {
+        return { success: false, message: 'Not authenticated' };
+      }
+
+      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
+        headers: getHeaders(true)
+      });
+
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error) {
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Failed to fetch profile';
+      return { success: false, message };
+    }
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const authHeader = getAuthHeader();
+      if (!authHeader) {
+        return { success: false, message: 'Not authenticated' };
+      }
+
+      const response = await axios.put(`${API_BASE}/api/auth/profile`, profileData, {
+        headers: getHeaders(true)
+      });
+
+      return {
+        success: true,
+        profile: response.data,
+        message: 'Profile updated successfully'
+      };
+    } catch (error) {
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Failed to update profile';
+      return { success: false, message };
+    }
+  };
+
   const value = {
     user,
     tokens,
@@ -167,6 +270,10 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     getAuthHeader,
+    getHeaders,
+    fetchUrls,
+    getProfile,
+    updateProfile,
     API_BASE
   };
 
