@@ -593,15 +593,19 @@ const Dashboard = () => {
           {/* Left Column - Recent URLs (3/4 width) */}
           <div className="lg:col-span-3">
             <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  📋 Recent URLs
-                </h2>
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Recent URLs</h2>
+                  <p className="text-gray-600 mt-1">Your latest shortened links</p>
+                </div>
                 <button
                   onClick={() => navigate('/history')}
-                  className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
+                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline transition-colors"
                 >
-                  View All History →
+                  <span>View All History</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
 
@@ -628,9 +632,13 @@ const Dashboard = () => {
 
               {/* Empty State */}
               {!recentUrls.loading && !recentUrls.error && recentUrls.data.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🔗</div>
-                  <p className="text-xl font-semibold text-gray-600 mb-2">No URLs yet</p>
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No URLs yet</h3>
                   <p className="text-gray-500">Create your first short URL to see it here!</p>
                 </div>
               )}
@@ -639,24 +647,31 @@ const Dashboard = () => {
               {!recentUrls.loading && !recentUrls.error && recentUrls.data.length > 0 && (
                 <div className="space-y-4">
                   {recentUrls.data.map((urlItem, index) => (
-                    <div key={urlItem.id} className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center mb-2">
-                            <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full mr-3">
-                              #{index + 1}
-                            </span>
-                            <p className="text-sm font-medium text-gray-600 truncate" title={urlItem.url}>
-                              {urlItem.url.length > 70 ? `${urlItem.url.substring(0, 70)}...` : urlItem.url}
+                    <div key={urlItem.id} className="bg-gradient-to-r from-gray-50 via-white to-gray-50 rounded-xl p-5 border border-gray-200 hover:shadow-md hover:border-gray-300 transition-all duration-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0 mr-6">
+                          {/* Original URL with LATEST badge */}
+                          <div className="mb-3">
+                            <div className="flex items-center mb-2">
+                              {index === 0 && (
+                                <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full mr-3 uppercase tracking-wide">
+                                  Latest
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base font-medium text-gray-900 truncate" title={urlItem.url}>
+                              {urlItem.url.length > 75 ? `${urlItem.url.substring(0, 75)}...` : urlItem.url}
                             </p>
                           </div>
+                          
+                          {/* Short URL with actions */}
                           <div className="flex items-center mb-3">
-                            <span className="text-blue-600 font-mono font-semibold bg-blue-50 px-3 py-1 rounded-lg">
-                              /{urlItem.code}
+                            <span className="text-blue-600 font-mono text-sm font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                              {API_BASE.replace('http://', '').replace('https://', '')}/{urlItem.code}
                             </span>
                             <button
                               onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
-                              className="ml-3 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              className="ml-3 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Copy short URL"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -667,7 +682,7 @@ const Dashboard = () => {
                               href={`${API_BASE}/${urlItem.code}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="ml-2 p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                              className="ml-2 p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="Open short URL"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -675,21 +690,28 @@ const Dashboard = () => {
                               </svg>
                             </a>
                           </div>
-                          <div className="flex items-center space-x-4">
-                            {urlItem.click_count !== undefined && (
-                              <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
-                                👆 {urlItem.click_count} clicks
+                          
+                          {/* Stats */}
+                          {urlItem.click_count !== undefined && (
+                            <div>
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                {urlItem.click_count} {urlItem.click_count === 1 ? 'click' : 'clicks'}
                               </span>
-                            )}
-                            <span className="text-xs text-gray-500">
-                              📅 {new Date(urlItem.createdon * 1000).toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Date */}
+                        <div className="text-right">
+                          <p className="text-sm text-gray-500 font-medium">
+                            {new Date(urlItem.createdon * 1000).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: new Date().getFullYear() !== new Date(urlItem.createdon * 1000).getFullYear() ? 'numeric' : undefined,
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
                       </div>
                     </div>
