@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Dashboard = () => {
+  usePageTitle('Dashboard');
+  
   const { user, logout, getAuthHeader, fetchUrls, getProfile, updateProfile, API_BASE } = useAuth();
   const navigate = useNavigate();
   

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Analytics = () => {
+  usePageTitle('Analytics');
+  
   const { user, logout, API_BASE } = useAuth();
   const navigate = useNavigate();
   
