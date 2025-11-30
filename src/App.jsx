@@ -1,6 +1,9 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
+import Analytics from './components/Analytics';
+import History from './components/History';
 import './App.css'
 import './index.css'
 
@@ -18,14 +21,28 @@ function AppContent() {
     );
   }
 
-  return user?.isAuthenticated ? <Dashboard /> : <LandingPage />;
+  if (!user?.isAuthenticated) {
+    return <LandingPage />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/analytics" element={<Analytics />} />
+      <Route path="/history" element={<History />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 

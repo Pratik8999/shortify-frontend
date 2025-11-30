@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Dashboard = () => {
   const { user, logout, getAuthHeader, fetchUrls, getProfile, updateProfile, API_BASE } = useAuth();
+  const navigate = useNavigate();
+  
   const [urlData, setUrlData] = useState({
     url: '',
     shortCode: '',
@@ -13,17 +16,10 @@ const Dashboard = () => {
     existingUrlMessage: ''
   });
 
-  const [urlHistory, setUrlHistory] = useState({
+  const [recentUrls, setRecentUrls] = useState({
     data: [],
     loading: false,
-    error: '',
-    pagination: {
-      current_page: 1,
-      next_page: null,
-      prev_page: null,
-      total_pages: 1,
-      total_items: 0
-    }
+    error: ''
   });
 
   const [profile, setProfile] = useState({
@@ -34,6 +30,33 @@ const Dashboard = () => {
     editData: { name: '', email: '' },
     updating: false
   });
+
+  // Dummy analytics data
+  const analyticsData = {
+    totalUrls: 47,
+    totalClicks: 15420,
+    thisMonthClicks: 3240,
+    averageCTR: 12.4,
+    topCountries: [
+      { name: "India", flag: "🇮🇳", percentage: 42 },
+      { name: "USA", flag: "🇺🇸", percentage: 28 },
+      { name: "UK", flag: "🇬🇧", percentage: 12 },
+      { name: "Germany", flag: "🇩🇪", percentage: 8 },
+      { name: "Others", flag: "🌍", percentage: 10 }
+    ],
+    deviceBreakdown: {
+      mobile: 58,
+      desktop: 42
+    },
+    clicksOverTime: [
+      { date: 'Nov 25', clicks: 1200 },
+      { date: 'Nov 26', clicks: 1850 },
+      { date: 'Nov 27', clicks: 1600 },
+      { date: 'Nov 28', clicks: 2100 },
+      { date: 'Nov 29', clicks: 1950 },
+      { date: 'Nov 30', clicks: 2300 }
+    ]
+  };
 
   // Validate URL format
   const isValidUrl = (string) => {
@@ -96,8 +119,6 @@ const Dashboard = () => {
         }
       });
 
-      console.log('URL Shortening Response:', response.status, response.data);
-
       // Success (201 Created)
       if (response.status === 201) {
         const { code, message } = response.data;
@@ -109,8 +130,8 @@ const Dashboard = () => {
           error: ''
         }));
 
-        // Refresh URL history to show the new URL
-        loadUrls(1);
+        // Refresh recent URLs to show the new URL
+        loadRecentUrls();
       }
     } catch (error) {
       setUrlData(prev => ({ ...prev, isLoading: false, success: false }));
@@ -129,8 +150,8 @@ const Dashboard = () => {
             error: '',
             existingUrlMessage: message || 'URL already exists'
           }));
-          // Refresh URL history
-          loadUrls(1);
+          // Refresh recent URLs
+          loadRecentUrls();
         } else if (status === 422) {
           // Validation error
           const errorMsg = parseValidationError(data.detail);
@@ -162,38 +183,24 @@ const Dashboard = () => {
     }
   };
 
-  // Load URLs from API
-  const loadUrls = async (page = 1, limit = 10) => {
-    setUrlHistory(prev => ({ ...prev, loading: true, error: '' }));
+  // Load recent 5 URLs from API
+  const loadRecentUrls = async () => {
+    setRecentUrls(prev => ({ ...prev, loading: true, error: '' }));
     
-    const result = await fetchUrls(page, limit);
+    const result = await fetchUrls(1, 5); // Only get 5 recent URLs
     
     if (result.success) {
-      setUrlHistory({
+      setRecentUrls({
         data: result.data,
         loading: false,
-        error: '',
-        pagination: result.pagination
+        error: ''
       });
     } else {
-      setUrlHistory(prev => ({
+      setRecentUrls(prev => ({
         ...prev,
         loading: false,
         error: result.message
       }));
-    }
-  };
-
-  // Handle pagination
-  const handleNextPage = () => {
-    if (urlHistory.pagination.next_page) {
-      loadUrls(urlHistory.pagination.next_page);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (urlHistory.pagination.prev_page) {
-      loadUrls(urlHistory.pagination.prev_page);
     }
   };
 
@@ -243,7 +250,7 @@ const Dashboard = () => {
     }
   };
 
-  // Get intelligent greeting based on user's timezone
+  // Get intelligent greeting
   const getGreeting = () => {
     const now = new Date();
     const hour = now.getHours();
@@ -258,14 +265,12 @@ const Dashboard = () => {
       greeting = 'Good Evening';
     }
     
-    return {
-      message: `${greeting}, ${userName}!`
-    };
+    return `${greeting}, ${userName}!`;
   };
 
-  // Load profile on component mount
+  // Load data on component mount
   useEffect(() => {
-    loadUrls();
+    loadRecentUrls();
     loadProfile();
   }, []);
 
@@ -282,43 +287,68 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20 sticky top-0 z-40">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Shortify Dashboard
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                ⚡ Shortify
+              </div>
+              <nav className="hidden md:flex space-x-6">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="text-blue-600 font-medium"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/analytics')}
+                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  Analytics
+                </button>
+                <button
+                  onClick={() => navigate('/history')}
+                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  History
+                </button>
+              </nav>
             </div>
-            <div className="flex items-center space-x-6">
-              {/* Intelligent Greeting */}
+            <div className="flex items-center space-x-4">
+              {/* Greeting */}
               {profile.data && (
-                <div className="text-right">
-                  <div className="text-lg font-medium text-gray-800">
-                    {getGreeting().message}
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm font-medium text-gray-800">
+                    {getGreeting()}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-gray-500">
                     {profile.data.country}
                   </div>
                 </div>
               )}
               
-              {/* Profile & Actions */}
-              <div className="flex items-center space-x-3">
+              {/* Profile & Logout */}
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setProfile(prev => ({ ...prev, editing: !prev.editing }))}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer flex items-center space-x-2"
+                  className="p-2 bg-blue-100 text-blue-600 rounded-xl hover:bg-blue-200 transition-all duration-200"
+                  title="Edit Profile"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  <span>Profile</span>
                 </button>
                 <button
                   onClick={logout}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
+                  className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all duration-200"
+                  title="Logout"
                 >
-                  Logout
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -326,377 +356,442 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-2xl shadow-sm p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            URL Shortener
-          </h1>
-          
-          {/* Profile Edit Modal */}
-          {profile.editing && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Edit Profile</h2>
-                  <button
-                    onClick={() => setProfile(prev => ({ ...prev, editing: false, error: '' }))}
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+      {/* Profile Edit Modal */}
+      {profile.editing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+              <button
+                onClick={() => setProfile(prev => ({ ...prev, editing: false, error: '' }))}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {profile.loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading profile...</p>
+              </div>
+            ) : profile.error ? (
+              <div className="text-center py-8">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm mb-4">
+                  {profile.error}
+                </div>
+                <button
+                  onClick={loadProfile}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : !profile.data ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">No profile data available</p>
+                <button
+                  onClick={loadProfile}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Load Profile
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Current Profile Info */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-medium text-gray-700 mb-2">Current Profile</h3>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p><span className="font-medium">Name:</span> {profile.data.name}</p>
+                    <p><span className="font-medium">Email:</span> {profile.data.email}</p>
+                    <p><span className="font-medium">Country:</span> {profile.data.country}</p>
+                  </div>
                 </div>
 
-                {profile.loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading profile...</p>
-                  </div>
-                ) : profile.error ? (
-                  <div className="text-center py-8">
-                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm mb-4">
-                      {profile.error}
-                    </div>
-                    <button
-                      onClick={loadProfile}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : !profile.data ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">No profile data available</p>
-                    <button
-                      onClick={loadProfile}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
-                    >
-                      Load Profile
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Current Profile Info */}
-                    {profile.data && (
-                      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                        <h3 className="font-medium text-gray-700 mb-2">Current Profile</h3>
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <p><span className="font-medium">Name:</span> {profile.data.name}</p>
-                          <p><span className="font-medium">Email:</span> {profile.data.email}</p>
-                          <p><span className="font-medium">Country:</span> {profile.data.country}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Edit Form */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input
-                        type="text"
-                        value={profile.editData.name}
-                        onChange={(e) => setProfile(prev => ({
-                          ...prev,
-                          editData: { ...prev.editData, name: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Your name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={profile.editData.email}
-                        onChange={(e) => setProfile(prev => ({
-                          ...prev,
-                          editData: { ...prev.editData, email: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-
-                    {/* Error Message */}
-                    {profile.error && (
-                      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                        {profile.error}
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-3 pt-4">
-                      <button
-                        onClick={handleUpdateProfile}
-                        disabled={profile.updating || !profile.editData.name.trim() || !profile.editData.email.trim()}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        {profile.updating ? (
-                          <div className="flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Updating...
-                          </div>
-                        ) : 'Update Profile'}
-                      </button>
-                      <button
-                        onClick={() => setProfile(prev => ({ 
-                          ...prev, 
-                          editing: false, 
-                          error: '',
-                          editData: { name: prev.data?.name || '', email: prev.data?.email || '' }
-                        }))}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* URL Shortener Form */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                Create Short URLs
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Paste your long URL below to create a shortened version
-              </p>
-              
-              {/* URL Input Form */}
-              <div className="max-w-2xl mx-auto">
-                <div className="flex gap-3 mb-4">
+                {/* Edit Form */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                   <input
-                    type="url"
-                    placeholder="https://example.com/very-long-url-here"
-                    value={urlData.url}
-                    onChange={handleUrlChange}
-                    disabled={urlData.isLoading}
-                    className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                      urlData.error ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    } ${urlData.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    type="text"
+                    value={profile.editData.name}
+                    onChange={(e) => setProfile(prev => ({
+                      ...prev,
+                      editData: { ...prev.editData, name: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Your name"
                   />
-                  <button 
-                    onClick={handleShortenUrl}
-                    disabled={urlData.isLoading || !urlData.url.trim()}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {urlData.isLoading ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Shortening...
-                      </div>
-                    ) : 'Shorten'}
-                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={profile.editData.email}
+                    onChange={(e) => setProfile(prev => ({
+                      ...prev,
+                      editData: { ...prev.editData, email: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="your@email.com"
+                  />
                 </div>
 
                 {/* Error Message */}
-                {urlData.error && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm mb-4">
-                    {urlData.error}
+                {profile.error && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                    {profile.error}
                   </div>
                 )}
 
-                {/* Success Message with Short URL */}
-                {urlData.success && urlData.shortCode && (
-                  <div className={`border rounded-lg p-4 mb-4 ${
-                    urlData.existingUrlMessage 
-                      ? 'bg-blue-50 border-blue-200' 
-                      : 'bg-green-50 border-green-200'
-                  }`}>
-                    <p className={`font-medium mb-3 ${
-                      urlData.existingUrlMessage 
-                        ? 'text-blue-700' 
-                        : 'text-green-700'
-                    }`}>
-                      {urlData.existingUrlMessage 
-                        ? `ℹ️ ${urlData.existingUrlMessage}` 
-                        : '✅ Short URL created successfully!'
-                      }
-                    </p>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={`${API_BASE}/${urlData.shortCode}`}
-                        readOnly
-                        className={`flex-1 px-3 py-2 bg-white border rounded font-mono text-sm ${
-                          urlData.existingUrlMessage 
-                            ? 'border-blue-300 text-blue-700' 
-                            : 'border-green-300 text-green-700'
-                        }`}
-                      />
-                      <button
-                        onClick={() => copyToClipboard(`${API_BASE}/${urlData.shortCode}`)}
-                        className={`px-3 py-2 text-white rounded hover:opacity-90 transition-colors text-sm cursor-pointer ${
-                          urlData.existingUrlMessage 
-                            ? 'bg-blue-600' 
-                            : 'bg-green-600'
-                        }`}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        onClick={clearForm}
-                        className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm cursor-pointer"
-                      >
-                        New
-                      </button>
-                    </div>
+                {/* Action Buttons */}
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={profile.updating || !profile.editData.name.trim() || !profile.editData.email.trim()}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {profile.updating ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </div>
+                    ) : 'Update Profile'}
+                  </button>
+                  <button
+                    onClick={() => setProfile(prev => ({ 
+                      ...prev, 
+                      editing: false, 
+                      error: '',
+                      editData: { name: prev.data?.name || '', email: prev.data?.email || '' }
+                    }))}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Section - URL Shortener */}
+        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8 lg:p-12 mb-8 max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+              Shorten Your URLs Instantly
+            </h1>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Transform long, complex URLs into short, shareable links that are perfect for social media, emails, and more.
+            </p>
+          </div>
+          
+          {/* URL Input Form */}
+          <div className="w-full max-w-5xl mx-auto">
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <input
+                  type="url"
+                  placeholder="https://example.com/very-long-url-that-needs-shortening"
+                  value={urlData.url}
+                  onChange={handleUrlChange}
+                  disabled={urlData.isLoading}
+                  className={`w-full px-6 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all text-lg ${
+                    urlData.error ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300 focus:border-blue-500'
+                  } ${urlData.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+              </div>
+              <button 
+                onClick={handleShortenUrl}
+                disabled={urlData.isLoading || !urlData.url.trim()}
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-lg whitespace-nowrap"
+              >
+                {urlData.isLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Shortening...
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    Shorten URL
                   </div>
                 )}
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {urlData.error && (
+              <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl text-center mb-6">
+                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {urlData.error}
               </div>
+            )}
+
+            {/* Success Message with Short URL */}
+            {urlData.success && urlData.shortCode && (
+              <div className={`border-2 rounded-2xl p-6 text-center ${
+                urlData.existingUrlMessage 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-green-50 border-green-200'
+              }`}>
+                <p className={`font-semibold mb-4 text-lg ${
+                  urlData.existingUrlMessage 
+                    ? 'text-blue-700' 
+                    : 'text-green-700'
+                }`}>
+                  {urlData.existingUrlMessage 
+                    ? `ℹ️ ${urlData.existingUrlMessage}` 
+                    : '🎉 Short URL created successfully!'
+                  }
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 items-center w-full max-w-4xl mx-auto">
+                  <input
+                    type="text"
+                    value={`${API_BASE}/${urlData.shortCode}`}
+                    readOnly
+                    className={`flex-1 px-4 py-3 bg-white border-2 rounded-xl font-mono text-center text-lg font-semibold ${
+                      urlData.existingUrlMessage 
+                        ? 'border-blue-300 text-blue-700' 
+                        : 'border-green-300 text-green-700'
+                    }`}
+                  />
+                  <button
+                    onClick={() => copyToClipboard(`${API_BASE}/${urlData.shortCode}`)}
+                    className={`px-6 py-3 text-white rounded-xl hover:scale-105 transition-all font-semibold ${
+                      urlData.existingUrlMessage 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-green-600 hover:bg-green-700'
+                    }`}
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    onClick={clearForm}
+                    className="px-6 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 hover:scale-105 transition-all font-semibold"
+                  >
+                    ✨ New URL
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Two Column Layout */}
+        <div className="grid lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Left Column - Recent URLs (3/4 width) */}
+          <div className="lg:col-span-3">
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  📋 Recent URLs
+                </h2>
+                <button
+                  onClick={() => navigate('/history')}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
+                >
+                  View All History →
+                </button>
+              </div>
+
+              {/* Loading State */}
+              {recentUrls.loading && (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500 text-lg">Loading your recent URLs...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {recentUrls.error && !recentUrls.loading && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 text-center">
+                  <p className="text-red-600 mb-3">{recentUrls.error}</p>
+                  <button
+                    onClick={loadRecentUrls}
+                    className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!recentUrls.loading && !recentUrls.error && recentUrls.data.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🔗</div>
+                  <p className="text-xl font-semibold text-gray-600 mb-2">No URLs yet</p>
+                  <p className="text-gray-500">Create your first short URL to see it here!</p>
+                </div>
+              )}
+
+              {/* URL List */}
+              {!recentUrls.loading && !recentUrls.error && recentUrls.data.length > 0 && (
+                <div className="space-y-4">
+                  {recentUrls.data.map((urlItem, index) => (
+                    <div key={urlItem.id} className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center mb-2">
+                            <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full mr-3">
+                              #{index + 1}
+                            </span>
+                            <p className="text-sm font-medium text-gray-600 truncate" title={urlItem.url}>
+                              {urlItem.url.length > 70 ? `${urlItem.url.substring(0, 70)}...` : urlItem.url}
+                            </p>
+                          </div>
+                          <div className="flex items-center mb-3">
+                            <span className="text-blue-600 font-mono font-semibold bg-blue-50 px-3 py-1 rounded-lg">
+                              /{urlItem.code}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
+                              className="ml-3 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              title="Copy short URL"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                            <a
+                              href={`${API_BASE}/${urlItem.code}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                              title="Open short URL"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            {urlItem.click_count !== undefined && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
+                                👆 {urlItem.click_count} clicks
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-500">
+                              📅 {new Date(urlItem.createdon * 1000).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* URL History Section */}
-          <div className="mt-12">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-800">
-                Your URL History
-                {urlHistory.pagination.total_items > 0 && (
-                  <span className="text-sm font-normal text-gray-500 ml-2">
-                    ({urlHistory.pagination.total_items} total)
-                  </span>
-                )}
-              </h3>
-            </div>
-
-            {/* Loading State */}
-            {urlHistory.loading && (
-              <div className="bg-gray-50 rounded-xl p-6 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-gray-500">Loading your URLs...</p>
-              </div>
-            )}
-
-            {/* Error State */}
-            {urlHistory.error && !urlHistory.loading && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                <p className="text-red-600 mb-3">{urlHistory.error}</p>
+          {/* Right Column - Analytics Summary (1/4 width) */}
+          <div className="lg:col-span-1">
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  📊 Quick Stats
+                </h2>
                 <button
-                  onClick={() => loadUrls(urlHistory.pagination.current_page)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
+                  onClick={() => navigate('/analytics')}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
                 >
-                  Try Again
+                  View Details →
                 </button>
               </div>
-            )}
 
-            {/* Empty State */}
-            {!urlHistory.loading && !urlHistory.error && urlHistory.data.length === 0 && (
-              <div className="bg-gray-50 rounded-xl p-6 text-center text-gray-500">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                <p className="text-lg font-medium mb-2">No URLs shortened yet</p>
-                <p>Create your first short URL above to get started!</p>
+              {/* Overview Stats */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center">
+                  <div className="text-xl font-bold text-blue-600">{analyticsData.totalUrls}</div>
+                  <div className="text-xs text-blue-600 font-medium">URLs</div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 text-center">
+                  <div className="text-xl font-bold text-green-600">{(analyticsData.totalClicks/1000).toFixed(0)}k</div>
+                  <div className="text-xs text-green-600 font-medium">Clicks</div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 text-center">
+                  <div className="text-xl font-bold text-purple-600">{(analyticsData.thisMonthClicks/1000).toFixed(1)}k</div>
+                  <div className="text-xs text-purple-600 font-medium">This Month</div>
+                </div>
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 text-center">
+                  <div className="text-xl font-bold text-orange-600">{analyticsData.averageCTR}%</div>
+                  <div className="text-xs text-orange-600 font-medium">CTR</div>
+                </div>
               </div>
-            )}
 
-            {/* URL List */}
-            {!urlHistory.loading && !urlHistory.error && urlHistory.data.length > 0 && (
-              <div className="space-y-4">
-                {urlHistory.data.map((urlItem) => (
-                  <div key={urlItem.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0 mr-4">
-                        <p className="text-sm font-medium text-gray-900 truncate" title={urlItem.url}>
-                          {urlItem.url.length > 60 ? `${urlItem.url.substring(0, 60)}...` : urlItem.url}
-                        </p>
-                        <div className="flex items-center mt-1">
-                          <span className="text-blue-600 font-mono text-sm">
-                            {API_BASE}/{urlItem.code}
-                          </span>
-                          <button
-                            onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
-                            className="ml-2 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
-                            title="Copy short URL"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                          <a
-                            href={`${API_BASE}/${urlItem.code}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 text-gray-400 hover:text-green-600 transition-colors cursor-pointer"
-                            title="Open short URL"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        </div>
-                        {urlItem.click_count !== undefined && (
-                          <div className="mt-2">
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                              {urlItem.click_count} {urlItem.click_count === 1 ? 'click' : 'clicks'}
-                            </span>
-                          </div>
-                        )}
+              {/* Top Countries */}
+              <div className="mb-6">
+                <h3 className="text-base font-semibold text-gray-800 mb-3">🌍 Countries</h3>
+                <div className="space-y-2">
+                  {analyticsData.topCountries.slice(0, 4).map((country, index) => (
+                    <div key={country.name} className="flex items-center justify-between py-1">
+                      <div className="flex items-center">
+                        <span className="text-sm mr-2">{country.flag}</span>
+                        <span className="text-xs font-medium text-gray-700 truncate">{country.name}</span>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">
-                          {new Date(urlItem.createdon * 1000).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
+                      <div className="flex items-center">
+                        <div className="w-12 bg-gray-200 rounded-full h-1.5 mr-2">
+                          <div 
+                            className="bg-blue-500 h-1.5 rounded-full" 
+                            style={{ width: `${country.percentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-semibold text-gray-600 min-w-[28px]">{country.percentage}%</span>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            )}
 
-            {/* Pagination Controls */}
-            {(urlHistory.pagination.next_page || urlHistory.pagination.prev_page) && !urlHistory.loading && (
-              <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    Page {urlHistory.pagination.current_page} of {urlHistory.pagination.total_pages}
-                    {urlHistory.pagination.total_items > 0 && (
-                      <span> • {urlHistory.pagination.total_items} total URLs</span>
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  {/* Previous Button */}
-                  <button
-                    onClick={handlePrevPage}
-                    disabled={!urlHistory.pagination.prev_page}
-                    className="px-4 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center space-x-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span>Previous</span>
-                  </button>
-                  
-                  {/* Next Button */}
-                  <button
-                    onClick={handleNextPage}
-                    disabled={!urlHistory.pagination.next_page}
-                    className="px-4 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center space-x-1"
-                  >
-                    <span>Next</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+              {/* Device Breakdown */}
+              <div className="mb-5">
+                <h3 className="text-base font-semibold text-gray-800 mb-3">📱 Devices</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-sm mr-2">📱</span>
+                      <span className="text-xs font-medium text-gray-700">Mobile</span>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.mobile}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-sm mr-2">💻</span>
+                      <span className="text-xs font-medium text-gray-700">Desktop</span>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.desktop}%</span>
+                  </div>
                 </div>
               </div>
-            )}
+
+              {/* Recent Activity */}
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-3">📈 Activity</h3>
+                <div className="space-y-1">
+                  {analyticsData.clicksOverTime.slice(-3).map((day, index) => (
+                    <div key={day.date} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded-lg">
+                      <span className="text-xs font-medium text-gray-700">{day.date}</span>
+                      <span className="text-xs font-semibold text-blue-600">{day.clicks}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
