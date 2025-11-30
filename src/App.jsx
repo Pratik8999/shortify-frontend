@@ -10,7 +10,9 @@ import './index.css'
 function AppContent() {
   const { user, loading } = useAuth();
 
-  if (loading) {
+  // Only show loading screen on very first app load (when user is undefined)
+  // Don't show it during login/register attempts (when user is null)
+  if (loading && user === undefined) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">

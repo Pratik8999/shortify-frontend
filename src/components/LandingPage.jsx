@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -7,7 +7,8 @@ const LandingPage = () => {
   
   const [isLogin, setIsLogin] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { register, login, loading } = useAuth();
+  const { register, login } = useAuth();
+  const [formLoading, setFormLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -18,6 +19,9 @@ const LandingPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const errorTimeoutRef = useRef(null);
+
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -71,6 +75,7 @@ const LandingPage = () => {
 
     if (!validateForm()) return;
 
+    setFormLoading(true);
     try {
       let result;
       if (isLogin) {
@@ -84,7 +89,7 @@ const LandingPage = () => {
         });
       }
 
-      if (result.success) {
+      if (result && result.success) {
         setShowAuthModal(false);
         setFormData({
           name: '',
@@ -94,10 +99,12 @@ const LandingPage = () => {
           confirmPassword: ''
         });
       } else {
-        setSubmitError(result.message);
+        setSubmitError(result?.message || 'An error occurred');
       }
     } catch (error) {
       setSubmitError('Something went wrong. Please try again.');
+    } finally {
+      setFormLoading(false);
     }
   };
 
@@ -126,6 +133,8 @@ const LandingPage = () => {
             <button
               onClick={() => {
                 setIsLogin(true);
+                setSubmitError('');
+                setErrors({});
                 setShowAuthModal(true);
               }}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
@@ -135,6 +144,8 @@ const LandingPage = () => {
             <button
               onClick={() => {
                 setIsLogin(false);
+                setSubmitError('');
+                setErrors({});
                 setShowAuthModal(true);
               }}
               className="px-5 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full hover:shadow-lg transition-all duration-300 cursor-pointer"
@@ -166,6 +177,8 @@ const LandingPage = () => {
               <button
                 onClick={() => {
                   setIsLogin(false);
+                  setSubmitError('');
+                  setErrors({});
                   setShowAuthModal(true);
                 }}
                 className="px-7 py-3 text-base bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
@@ -175,6 +188,8 @@ const LandingPage = () => {
               <button
                 onClick={() => {
                   setIsLogin(true);
+                  setSubmitError('');
+                  setErrors({});
                   setShowAuthModal(true);
                 }}
                 className="px-7 py-3 text-base border-2 border-gray-300 text-gray-700 font-semibold rounded-full hover:border-gray-400 hover:shadow-md transition-all duration-300 transform hover:scale-105 cursor-pointer"
@@ -396,17 +411,17 @@ const LandingPage = () => {
               )}
 
               {submitError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm text-center">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm text-center mb-4">
                   {submitError}
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={formLoading}
                 className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:hover:scale-100 cursor-pointer"
               >
-                {loading ? (
+                {formLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                     Processing...

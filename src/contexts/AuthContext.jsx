@@ -89,7 +89,9 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      setLoading(true);
+      // CRITICAL: Don't set loading during registration attempts to avoid unmounting LandingPage
+      // This prevents the modal from disappearing during registration
+      
       const response = await axios.post(`${API_BASE}/api/auth/register`, userData, {
         headers: getHeaders(false)
       });
@@ -108,15 +110,15 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const message = error.response?.data?.detail || 'Registration failed';
       return { success: false, message };
-    } finally {
-      setLoading(false);
     }
+    // CRITICAL: No finally block with setLoading(false) to avoid re-renders
   };
 
   const login = async (email, password) => {
     try {
-      setLoading(true);
-      // Assuming you have a separate login endpoint
+      // CRITICAL: Don't set loading during login attempts to avoid unmounting LandingPage
+      // This prevents the modal from disappearing during login
+      
       const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password
@@ -138,9 +140,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const message = error.response?.data?.detail || 'Login failed';
       return { success: false, message };
-    } finally {
-      setLoading(false);
     }
+    // CRITICAL: No finally block with setLoading(false) to avoid re-renders
   };
 
   const logout = async () => {
