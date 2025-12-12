@@ -131,7 +131,7 @@ const Analytics = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -144,13 +144,13 @@ const Analytics = () => {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
               >
                 Back to Dashboard
               </button>
               <button
                 onClick={logout}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
               >
                 Logout
               </button>
@@ -262,7 +262,7 @@ const Analytics = () => {
                         <p className="text-xs text-gray-500">total clicks</p>
                         <button
                           onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
-                          className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
                         >
                           Copy Link
                         </button>

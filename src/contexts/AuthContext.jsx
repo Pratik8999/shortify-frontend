@@ -263,6 +263,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const deleteUrls = async (urlCodes) => {
+    try {
+      const authHeader = getAuthHeader();
+      if (!authHeader) {
+        return { success: false, message: 'Not authenticated' };
+      }
+
+      const response = await axios.post(`${API_BASE}/api/url-shortner/delete`, {
+        url_codes: urlCodes
+      }, {
+        headers: getHeaders(true)
+      });
+
+      return {
+        success: true,
+        message: response.data.message || 'URLs deleted successfully'
+      };
+    } catch (error) {
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Failed to delete URLs';
+      return { success: false, message };
+    }
+  };
+
   const value = {
     user,
     tokens,
@@ -275,6 +298,7 @@ export const AuthProvider = ({ children }) => {
     fetchUrls,
     getProfile,
     updateProfile,
+    deleteUrls,
     API_BASE
   };
 
