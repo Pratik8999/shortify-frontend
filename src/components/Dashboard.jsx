@@ -276,7 +276,7 @@ const Dashboard = () => {
       greeting = 'Good Evening';
     }
     
-    return `${greeting}, ${userName}!`;
+    return `${greeting}, ${userName}`;
   };
 
   // Load data on component mount
