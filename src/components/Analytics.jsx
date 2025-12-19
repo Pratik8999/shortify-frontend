@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../hooks/usePageTitle';
+import axios from 'axios';
 
 const Analytics = () => {
   usePageTitle('Analytics');
@@ -9,109 +10,107 @@ const Analytics = () => {
   const { user, logout, API_BASE } = useAuth();
   const navigate = useNavigate();
   
-  // Dummy analytics data (in a real app, this would come from an API)
-  const [analyticsData] = useState({
+  const [analyticsData, setAnalyticsData] = useState({
     overview: {
-      totalUrls: 47,
-      totalClicks: 15420,
-      thisMonthClicks: 3240,
-      averageCTR: 12.4
+      totalUrls: 0,
+      totalClicks: 0,
+      thisMonthClicks: 0
     },
-    topPerformingUrls: [
-      {
-        id: 1,
-        url: "https://www.amazon.in/dp/B0B8NHX62W/ref=sspa_dk_detail_5",
-        code: "AMZ123",
-        clicks: 1247,
-        trend: 15,
-        createdDate: "2024-01-15",
-        countries: [
-          { name: "India", flag: "🇮🇳", percentage: 45, clicks: 561 },
-          { name: "USA", flag: "🇺🇸", percentage: 30, clicks: 374 },
-          { name: "UK", flag: "🇬🇧", percentage: 15, clicks: 187 },
-          { name: "Germany", flag: "🇩🇪", percentage: 10, clicks: 125 }
-        ],
-        devices: { 
-          mobile: { percentage: 65, clicks: 811 }, 
-          desktop: { percentage: 35, clicks: 436 } 
-        },
-        referrers: [
-          { name: "google.com", percentage: 40, clicks: 499 },
-          { name: "direct", percentage: 35, clicks: 436 },
-          { name: "social", percentage: 25, clicks: 312 }
-        ]
-      },
-      {
-        id: 2,
-        url: "https://github.com/user/awesome-project",
-        code: "GIT456",
-        clicks: 892,
-        trend: -5,
-        createdDate: "2024-01-10",
-        countries: [
-          { name: "USA", flag: "🇺🇸", percentage: 50, clicks: 446 },
-          { name: "Germany", flag: "🇩🇪", percentage: 25, clicks: 223 },
-          { name: "India", flag: "🇮🇳", percentage: 20, clicks: 178 },
-          { name: "Canada", flag: "🇨🇦", percentage: 5, clicks: 45 }
-        ],
-        devices: { 
-          mobile: { percentage: 40, clicks: 357 }, 
-          desktop: { percentage: 60, clicks: 535 } 
-        },
-        referrers: [
-          { name: "github.com", percentage: 60, clicks: 535 },
-          { name: "stackoverflow.com", percentage: 25, clicks: 223 },
-          { name: "direct", percentage: 15, clicks: 134 }
-        ]
-      },
-      {
-        id: 3,
-        url: "https://docs.google.com/document/presentation",
-        code: "DOC789",
-        clicks: 654,
-        trend: 8,
-        createdDate: "2024-01-08",
-        countries: [
-          { name: "India", flag: "🇮🇳", percentage: 55, clicks: 360 },
-          { name: "Singapore", flag: "🇸🇬", percentage: 25, clicks: 164 },
-          { name: "Australia", flag: "🇦🇺", percentage: 20, clicks: 131 }
-        ],
-        devices: { 
-          mobile: { percentage: 30, clicks: 196 }, 
-          desktop: { percentage: 70, clicks: 458 } 
-        },
-        referrers: [
-          { name: "email", percentage: 45, clicks: 294 },
-          { name: "slack.com", percentage: 35, clicks: 229 },
-          { name: "direct", percentage: 20, clicks: 131 }
-        ]
-      }
-    ],
+    topPerformingUrls: [],
     globalStats: {
-      topCountries: [
-        { name: "India", flag: "🇮🇳", percentage: 42, clicks: 6476 },
-        { name: "USA", flag: "🇺🇸", percentage: 28, clicks: 4318 },
-        { name: "UK", flag: "🇬🇧", percentage: 12, clicks: 1850 },
-        { name: "Germany", flag: "🇩🇪", percentage: 8, clicks: 1234 },
-        { name: "Canada", flag: "🇨🇦", percentage: 5, clicks: 771 },
-        { name: "Australia", flag: "🇦🇺", percentage: 3, clicks: 463 },
-        { name: "Singapore", flag: "🇸🇬", percentage: 2, clicks: 308 }
-      ],
-      deviceBreakdown: {
-        mobile: { percentage: 58, clicks: 8944 },
-        desktop: { percentage: 42, clicks: 6476 }
-      },
-      topReferrers: [
-        { name: "Direct", percentage: 35, clicks: 5397 },
-        { name: "Google", percentage: 25, clicks: 3855 },
-        { name: "Social Media", percentage: 15, clicks: 2313 },
-        { name: "Email", percentage: 12, clicks: 1850 },
-        { name: "GitHub", percentage: 8, clicks: 1234 },
-        { name: "Stack Overflow", percentage: 3, clicks: 463 },
-        { name: "Slack", percentage: 2, clicks: 308 }
-      ]
+      topCountries: [],
+      deviceBreakdown: [],
+      topReferrers: []
     }
   });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const hasFetched = useRef(false);
+
+  // Fetch global analytics data
+  useEffect(() => {
+    const fetchGlobalAnalytics = async () => {
+      // Prevent duplicate fetches
+      if (hasFetched.current) return;
+      hasFetched.current = true;
+
+      try {
+        setLoading(true);
+        const tokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+        
+        if (!tokens.access_token) {
+          setError('Not authenticated');
+          setLoading(false);
+          return;
+        }
+        
+        const response = await axios.get(`${API_BASE}/api/url-shortner/analytics/global`, {
+          headers: {
+            'Authorization': `Bearer ${tokens.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = response.data;
+        
+        // Transform the API response to match our component structure
+        setAnalyticsData({
+          overview: {
+            totalUrls: data.summary?.total_urls || 0,
+            totalClicks: data.summary?.total_clicks || 0,
+            thisMonthClicks: data.summary?.this_month_clicks || 0
+          },
+          topPerformingUrls: [],
+          globalStats: {
+            topCountries: (data.countries || []).map(country => ({
+              name: country.country,
+              flag: getFlagEmoji(country.country),
+              percentage: country.percentage,
+              clicks: country.count
+            })),
+            deviceBreakdown: data.devices || [],
+            topReferrers: (data.sources || []).map(source => ({
+              name: source.source,
+              percentage: source.percentage,
+              clicks: source.count
+            }))
+          }
+        });
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching analytics:', err);
+        const message = err.response?.data?.detail || err.response?.data?.message || err.message;
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGlobalAnalytics();
+  }, [API_BASE]);
+
+  // Helper function to get flag emoji from country code
+  const getFlagEmoji = (countryCode) => {
+    const flagMap = {
+      'IN': '🇮🇳',
+      'US': '🇺🇸',
+      'GB': '🇬🇧',
+      'DE': '🇩🇪',
+      'CA': '🇨🇦',
+      'AU': '🇦🇺',
+      'SG': '🇸🇬',
+      'FR': '🇫🇷',
+      'JP': '🇯🇵',
+      'CN': '🇨🇳',
+      'BR': '🇧🇷',
+      'MX': '🇲🇽',
+      'ES': '🇪🇸',
+      'IT': '🇮🇹',
+      'NL': '🇳🇱'
+    };
+    return flagMap[countryCode] || '🌍';
+  };
 
   // Copy to clipboard
   const copyToClipboard = async (text) => {
@@ -161,8 +160,25 @@ const Analytics = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <p className="font-medium">Error loading analytics data</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -205,25 +221,12 @@ const Analytics = () => {
               </div>
             </div>
           </div>
-
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium">Avg CTR</p>
-                <p className="text-3xl font-bold">{analyticsData.overview.averageCTR}%</p>
-              </div>
-              <div className="bg-white/20 rounded-lg p-3">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Top Performing URLs */}
+          {/* Left Column: Top Performing URLs - Hidden for now since no API data */}
+          {analyticsData.topPerformingUrls.length > 0 && (
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
@@ -346,9 +349,10 @@ const Analytics = () => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Right Column: Global Analytics */}
-          <div className="lg:col-span-1">
+          <div className={analyticsData.topPerformingUrls.length > 0 ? "lg:col-span-1" : "lg:col-span-3"}>
             <div className="sticky top-8 space-y-6">
               <div className="bg-white rounded-2xl shadow-sm p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
@@ -364,20 +368,24 @@ const Analytics = () => {
                     <span>🌍</span>
                     <span>All Countries</span>
                   </h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {analyticsData.globalStats.topCountries.map((country, index) => (
-                      <div key={index} className="flex items-center justify-between py-1">
-                        <span className="text-sm text-gray-600 flex items-center space-x-2">
-                          <span>{country.flag}</span>
-                          <span>{country.name}</span>
-                        </span>
-                        <div className="text-right">
-                          <span className="text-sm font-medium text-blue-600">{country.percentage}%</span>
-                          <span className="text-xs text-gray-500 ml-1">({country.clicks.toLocaleString()})</span>
+                  {analyticsData.globalStats.topCountries.length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {analyticsData.globalStats.topCountries.map((country, index) => (
+                        <div key={index} className="flex items-center justify-between py-1">
+                          <span className="text-sm text-gray-600 flex items-center space-x-2">
+                            <span>{country.flag}</span>
+                            <span>{country.name}</span>
+                          </span>
+                          <div className="text-right">
+                            <span className="text-sm font-medium text-blue-600">{country.percentage}%</span>
+                            <span className="text-xs text-gray-500 ml-1">({country.clicks.toLocaleString()})</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No data available</p>
+                  )}
                 </div>
 
                 {/* Global Device Breakdown */}
@@ -386,28 +394,27 @@ const Analytics = () => {
                     <span>📱</span>
                     <span>All Devices</span>
                   </h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 flex items-center space-x-2">
-                        <span>📱</span>
-                        <span>Mobile</span>
-                      </span>
-                      <div className="text-right">
-                        <span className="text-sm font-medium text-green-600">{analyticsData.globalStats.deviceBreakdown.mobile.percentage}%</span>
-                        <span className="text-xs text-gray-500 ml-1">({analyticsData.globalStats.deviceBreakdown.mobile.clicks.toLocaleString()})</span>
-                      </div>
+                  {analyticsData.globalStats.deviceBreakdown.length > 0 ? (
+                    <div className="space-y-2">
+                      {analyticsData.globalStats.deviceBreakdown.map((device, index) => {
+                        const deviceIcon = device.device.toLowerCase().includes('mobile') || device.device.toLowerCase().includes('samsung') ? '📱' : '💻';
+                        return (
+                          <div key={index} className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600 flex items-center space-x-2">
+                              <span>{deviceIcon}</span>
+                              <span className="truncate">{device.device}</span>
+                            </span>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <span className="text-sm font-medium text-green-600">{device.percentage}%</span>
+                              <span className="text-xs text-gray-500 ml-1">({device.count.toLocaleString()})</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 flex items-center space-x-2">
-                        <span>💻</span>
-                        <span>Desktop</span>
-                      </span>
-                      <div className="text-right">
-                        <span className="text-sm font-medium text-green-600">{analyticsData.globalStats.deviceBreakdown.desktop.percentage}%</span>
-                        <span className="text-xs text-gray-500 ml-1">({analyticsData.globalStats.deviceBreakdown.desktop.clicks.toLocaleString()})</span>
-                      </div>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No data available</p>
+                  )}
                 </div>
 
                 {/* All Referrers */}
@@ -416,22 +423,28 @@ const Analytics = () => {
                     <span>🔗</span>
                     <span>All Sources</span>
                   </h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {analyticsData.globalStats.topReferrers.map((referrer, index) => (
-                      <div key={index} className="flex items-center justify-between py-1">
-                        <span className="text-sm text-gray-600 truncate">{referrer.name}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-medium text-purple-600">{referrer.percentage}%</span>
-                          <span className="text-xs text-gray-500 ml-1">({referrer.clicks.toLocaleString()})</span>
+                  {analyticsData.globalStats.topReferrers.length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {analyticsData.globalStats.topReferrers.map((referrer, index) => (
+                        <div key={index} className="flex items-center justify-between py-1">
+                          <span className="text-sm text-gray-600 truncate">{referrer.name}</span>
+                          <div className="text-right">
+                            <span className="text-sm font-medium text-purple-600">{referrer.percentage}%</span>
+                            <span className="text-xs text-gray-500 ml-1">({referrer.clicks.toLocaleString()})</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No data available</p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
+        </>
+        )}
       </main>
     </div>
   );

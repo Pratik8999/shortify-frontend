@@ -3,6 +3,22 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
+// Global flag to prevent concurrent token refresh
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -37,10 +53,35 @@ export const AuthProvider = ({ children }) => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401 && tokens?.refresh_token) {
+        const originalRequest = error.config;
+        
+        // Prevent infinite loops
+        if (originalRequest._retry) {
+          return Promise.reject(error);
+        }
+        
+        // Get fresh tokens from localStorage to avoid stale closure
+        const currentTokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+        
+        if (error.response?.status === 401 && currentTokens?.refresh_token && !originalRequest._retry) {
+          // If already refreshing, queue this request
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            }).then(token => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              return axios.request(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          originalRequest._retry = true;
+          isRefreshing = true;
+          
           try {
             const refreshResponse = await axios.post(`${API_BASE}/api/auth/refresh`, {
-              refresh_token: tokens.refresh_token
+              refresh_token: currentTokens.refresh_token
             }, {
               headers: {
                 'Content-Type': 'application/json'
@@ -48,7 +89,7 @@ export const AuthProvider = ({ children }) => {
             });
             
             const newTokens = {
-              ...tokens,
+              ...currentTokens,
               access_token: refreshResponse.data.access_token,
               token_type: refreshResponse.data.token_type
             };
@@ -56,15 +97,21 @@ export const AuthProvider = ({ children }) => {
             setTokens(newTokens);
             localStorage.setItem('shortify_tokens', JSON.stringify(newTokens));
             
+            // Process queued requests
+            processQueue(null, refreshResponse.data.access_token);
+            
             // Retry the original request with new token
-            error.config.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
-            return axios.request(error.config);
+            originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
+            return axios.request(originalRequest);
           } catch (refreshError) {
+            processQueue(refreshError, null);
             if (refreshError.response?.status === 403) {
               // Refresh token expired, logout user
               logout();
             }
             return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
           }
         }
         return Promise.reject(error);
@@ -72,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => axios.interceptors.response.eject(interceptor);
-  }, [tokens]);
+  }, []);
 
   // Set user data on token change
   useEffect(() => {
