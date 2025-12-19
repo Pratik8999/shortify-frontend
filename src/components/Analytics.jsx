@@ -27,6 +27,7 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const hasFetched = useRef(false);
+  const hasTopPerformingFetched = useRef(false);
 
   // Fetch global analytics data
   useEffect(() => {
@@ -55,13 +56,13 @@ const Analytics = () => {
         const data = response.data;
         
         // Transform the API response to match our component structure
-        setAnalyticsData({
+        setAnalyticsData(prev => ({
+          ...prev,
           overview: {
             totalUrls: data.summary?.total_urls || 0,
             totalClicks: data.summary?.total_clicks || 0,
             thisMonthClicks: data.summary?.this_month_clicks || 0
           },
-          topPerformingUrls: [],
           globalStats: {
             topCountries: (data.countries || []).map(country => ({
               name: country.country,
@@ -76,7 +77,7 @@ const Analytics = () => {
               clicks: source.count
             }))
           }
-        });
+        }));
         setError(null);
       } catch (err) {
         console.error('Error fetching analytics:', err);
@@ -88,6 +89,62 @@ const Analytics = () => {
     };
 
     fetchGlobalAnalytics();
+  }, [API_BASE]);
+
+  // Fetch top performing URLs
+  useEffect(() => {
+    const fetchTopPerforming = async () => {
+      // Prevent duplicate fetches
+      if (hasTopPerformingFetched.current) return;
+      hasTopPerformingFetched.current = true;
+
+      try {
+        const tokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+        
+        if (!tokens.access_token) {
+          return;
+        }
+        
+        const response = await axios.get(`${API_BASE}/api/url-shortner/analytics/top-performing?limit=5`, {
+          headers: {
+            'Authorization': `Bearer ${tokens.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const topPerformingData = response.data.data || [];
+        
+        // Transform the API response
+        const transformedData = topPerformingData.map(item => ({
+          id: item.code,
+          url: item.url,
+          code: item.code,
+          clicks: item.total_clicks,
+          createdDate: new Date(item.created_at * 1000).toISOString().split('T')[0],
+          countries: item.countries.map(country => ({
+            name: country.country,
+            flag: getFlagEmoji(country.country),
+            percentage: country.percentage,
+            clicks: country.count
+          })),
+          devices: item.devices,
+          referrers: item.sources.map(source => ({
+            name: source.source,
+            percentage: source.percentage,
+            clicks: source.count
+          }))
+        }));
+
+        setAnalyticsData(prev => ({
+          ...prev,
+          topPerformingUrls: transformedData
+        }));
+      } catch (err) {
+        console.error('Error fetching top performing URLs:', err);
+      }
+    };
+
+    fetchTopPerforming();
   }, [API_BASE]);
 
   // Helper function to get flag emoji from country code
@@ -254,13 +311,6 @@ const Analytics = () => {
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-center space-x-2 mb-1">
                           <span className="text-2xl font-bold text-gray-900">{urlItem.clicks.toLocaleString()}</span>
-                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                            urlItem.trend > 0 
-                              ? 'text-green-700 bg-green-100' 
-                              : 'text-red-700 bg-red-100'
-                          }`}>
-                            {urlItem.trend > 0 ? '↗️' : '↘️'} {Math.abs(urlItem.trend)}%
-                          </span>
                         </div>
                         <p className="text-xs text-gray-500">total clicks</p>
                         <button
@@ -302,26 +352,21 @@ const Analytics = () => {
                           <span>Device Types</span>
                         </h4>
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700 flex items-center space-x-2">
-                              <span>📱</span>
-                              <span>Mobile</span>
-                            </span>
-                            <div className="text-right">
-                              <span className="text-sm font-medium text-green-700">{urlItem.devices.mobile.percentage}%</span>
-                              <span className="text-xs text-gray-500 ml-1">({urlItem.devices.mobile.clicks})</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700 flex items-center space-x-2">
-                              <span>💻</span>
-                              <span>Desktop</span>
-                            </span>
-                            <div className="text-right">
-                              <span className="text-sm font-medium text-green-700">{urlItem.devices.desktop.percentage}%</span>
-                              <span className="text-xs text-gray-500 ml-1">({urlItem.devices.desktop.clicks})</span>
-                            </div>
-                          </div>
+                          {urlItem.devices.map((device, index) => {
+                            const deviceIcon = device.device.toLowerCase().includes('mobile') || device.device.toLowerCase().includes('samsung') ? '📱' : '💻';
+                            return (
+                              <div key={index} className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700 flex items-center space-x-2">
+                                  <span>{deviceIcon}</span>
+                                  <span className="truncate">{device.device}</span>
+                                </span>
+                                <div className="text-right flex-shrink-0 ml-2">
+                                  <span className="text-sm font-medium text-green-700">{device.percentage}%</span>
+                                  <span className="text-xs text-gray-500 ml-1">({device.count})</span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
