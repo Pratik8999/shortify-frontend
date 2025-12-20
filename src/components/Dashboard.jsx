@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -42,31 +42,42 @@ const Dashboard = () => {
     updating: false
   });
 
-  // Dummy analytics data
-  const analyticsData = {
-    totalUrls: 47,
-    totalClicks: 15420,
-    thisMonthClicks: 3240,
-    averageCTR: 12.4,
-    topCountries: [
-      { name: "India", flag: "🇮🇳", percentage: 42 },
-      { name: "USA", flag: "🇺🇸", percentage: 28 },
-      { name: "UK", flag: "🇬🇧", percentage: 12 },
-      { name: "Germany", flag: "🇩🇪", percentage: 8 },
-      { name: "Others", flag: "🌍", percentage: 10 }
-    ],
+  // Analytics data state
+  const [analyticsData, setAnalyticsData] = useState({
+    totalUrls: 0,
+    totalClicks: 0,
+    thisMonthClicks: 0,
+    averageCTR: 0,
+    topCountries: [],
     deviceBreakdown: {
-      mobile: 58,
-      desktop: 42
+      mobile: 0,
+      desktop: 0
     },
-    clicksOverTime: [
-      { date: 'Nov 25', clicks: 1200 },
-      { date: 'Nov 26', clicks: 1850 },
-      { date: 'Nov 27', clicks: 1600 },
-      { date: 'Nov 28', clicks: 2100 },
-      { date: 'Nov 29', clicks: 1950 },
-      { date: 'Nov 30', clicks: 2300 }
-    ]
+    clicksOverTime: []
+  });
+
+  const hasAnalyticsFetched = useRef(false);
+
+  // Helper function to get flag emoji from country code
+  const getFlagEmoji = (countryCode) => {
+    const flagMap = {
+      'IN': '🇮🇳',
+      'US': '🇺🇸',
+      'GB': '🇬🇧',
+      'DE': '🇩🇪',
+      'CA': '🇨🇦',
+      'AU': '🇦🇺',
+      'SG': '🇸🇬',
+      'FR': '🇫🇷',
+      'JP': '🇯🇵',
+      'CN': '🇨🇳',
+      'BR': '🇧🇷',
+      'MX': '🇲🇽',
+      'ES': '🇪🇸',
+      'IT': '🇮🇹',
+      'NL': '🇳🇱'
+    };
+    return flagMap[countryCode] || '🌍';
   };
 
   // Validate URL format
@@ -279,10 +290,54 @@ const Dashboard = () => {
     return `${greeting}, ${userName}`;
   };
 
+  // Load analytics data
+  const loadAnalytics = async () => {
+    if (hasAnalyticsFetched.current) return;
+    hasAnalyticsFetched.current = true;
+
+    try {
+      const tokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+      
+      if (!tokens.access_token) {
+        return;
+      }
+      
+      const response = await axios.get(`${API_BASE}/url-shortner/analytics/global`, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = response.data;
+      
+      // Transform the API response
+      setAnalyticsData({
+        totalUrls: data.summary?.total_urls || 0,
+        totalClicks: data.summary?.total_clicks || 0,
+        thisMonthClicks: data.summary?.this_month_clicks || 0,
+        averageCTR: 0, // Can be calculated if needed
+        topCountries: (data.countries || []).slice(0, 5).map(country => ({
+          name: country.country,
+          flag: getFlagEmoji(country.country),
+          percentage: country.percentage
+        })),
+        deviceBreakdown: {
+          mobile: data.devices?.find(d => d.device === 'Mobile')?.percentage || 0,
+          desktop: data.devices?.find(d => d.device === 'Desktop')?.percentage || 0
+        },
+        clicksOverTime: [] // This would need a different endpoint if available
+      });
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+    }
+  };
+
   // Load data on component mount
   useEffect(() => {
     loadRecentUrls();
     loadProfile();
+    loadAnalytics();
   }, []);
 
   // Toggle selection mode
@@ -906,22 +961,26 @@ const Dashboard = () => {
               </div>
 
               {/* Overview Stats */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center">
-                  <div className="text-xl font-bold text-blue-600">{analyticsData.totalUrls}</div>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600">{analyticsData.totalUrls}</div>
                   <div className="text-xs text-blue-600 font-medium">URLs</div>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 text-center">
-                  <div className="text-xl font-bold text-green-600">{(analyticsData.totalClicks/1000).toFixed(0)}k</div>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {analyticsData.totalClicks >= 1000 
+                      ? `${(analyticsData.totalClicks/1000).toFixed(1)}k` 
+                      : analyticsData.totalClicks}
+                  </div>
                   <div className="text-xs text-green-600 font-medium">Clicks</div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 text-center">
-                  <div className="text-xl font-bold text-purple-600">{(analyticsData.thisMonthClicks/1000).toFixed(1)}k</div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {analyticsData.thisMonthClicks >= 1000 
+                      ? `${(analyticsData.thisMonthClicks/1000).toFixed(1)}k` 
+                      : analyticsData.thisMonthClicks}
+                  </div>
                   <div className="text-xs text-purple-600 font-medium">This Month</div>
-                </div>
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 text-center">
-                  <div className="text-xl font-bold text-orange-600">{analyticsData.averageCTR}%</div>
-                  <div className="text-xs text-orange-600 font-medium">CTR</div>
                 </div>
               </div>
 
@@ -929,23 +988,27 @@ const Dashboard = () => {
               <div className="mb-6">
                 <h3 className="text-base font-semibold text-gray-800 mb-3">🌍 Countries</h3>
                 <div className="space-y-2">
-                  {analyticsData.topCountries.slice(0, 4).map((country, index) => (
-                    <div key={country.name} className="flex items-center justify-between py-1">
-                      <div className="flex items-center">
-                        <span className="text-sm mr-2">{country.flag}</span>
-                        <span className="text-xs font-medium text-gray-700 truncate">{country.name}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-12 bg-gray-200 rounded-full h-1.5 mr-2">
-                          <div 
-                            className="bg-blue-500 h-1.5 rounded-full" 
-                            style={{ width: `${country.percentage}%` }}
-                          ></div>
+                  {analyticsData.topCountries.length > 0 ? (
+                    analyticsData.topCountries.slice(0, 4).map((country, index) => (
+                      <div key={country.name} className="flex items-center justify-between py-1">
+                        <div className="flex items-center">
+                          <span className="text-sm mr-2">{country.flag}</span>
+                          <span className="text-xs font-medium text-gray-700 truncate">{country.name}</span>
                         </div>
-                        <span className="text-xs font-semibold text-gray-600 min-w-[28px]">{country.percentage}%</span>
+                        <div className="flex items-center">
+                          <div className="w-12 bg-gray-200 rounded-full h-1.5 mr-2">
+                            <div 
+                              className="bg-blue-500 h-1.5 rounded-full" 
+                              style={{ width: `${country.percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-semibold text-gray-600 min-w-[28px]">{country.percentage}%</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-2">No data available</p>
+                  )}
                 </div>
               </div>
 
@@ -953,35 +1016,43 @@ const Dashboard = () => {
               <div className="mb-5">
                 <h3 className="text-base font-semibold text-gray-800 mb-3">📱 Devices</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="text-sm mr-2">📱</span>
-                      <span className="text-xs font-medium text-gray-700">Mobile</span>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.mobile}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="text-sm mr-2">💻</span>
-                      <span className="text-xs font-medium text-gray-700">Desktop</span>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.desktop}%</span>
-                  </div>
+                  {analyticsData.deviceBreakdown.mobile > 0 || analyticsData.deviceBreakdown.desktop > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-sm mr-2">📱</span>
+                          <span className="text-xs font-medium text-gray-700">Mobile</span>
+                        </div>
+                        <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.mobile}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-sm mr-2">💻</span>
+                          <span className="text-xs font-medium text-gray-700">Desktop</span>
+                        </div>
+                        <span className="text-xs font-semibold text-gray-600">{analyticsData.deviceBreakdown.desktop}%</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-2">No data available</p>
+                  )}
                 </div>
               </div>
 
               {/* Recent Activity */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-800 mb-3">📈 Activity</h3>
-                <div className="space-y-1">
-                  {analyticsData.clicksOverTime.slice(-3).map((day, index) => (
-                    <div key={day.date} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded-lg">
-                      <span className="text-xs font-medium text-gray-700">{day.date}</span>
-                      <span className="text-xs font-semibold text-blue-600">{day.clicks}</span>
-                    </div>
-                  ))}
+              {analyticsData.clicksOverTime.length > 0 && (
+                <div>
+                  <h3 className="text-base font-semibold text-gray-800 mb-3">📈 Activity</h3>
+                  <div className="space-y-1">
+                    {analyticsData.clicksOverTime.slice(-3).map((day, index) => (
+                      <div key={day.date} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs font-medium text-gray-700">{day.date}</span>
+                        <span className="text-xs font-semibold text-blue-600">{day.clicks}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
