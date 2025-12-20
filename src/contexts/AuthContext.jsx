@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
           isRefreshing = true;
           
           try {
-            const refreshResponse = await axios.post(`${API_BASE}/api/auth/refresh`, {
+            const refreshResponse = await axios.post(`${API_BASE}/auth/refresh`, {
               refresh_token: currentTokens.refresh_token
             }, {
               headers: {
@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }) => {
       // CRITICAL: Don't set loading during registration attempts to avoid unmounting LandingPage
       // This prevents the modal from disappearing during registration
       
-      const response = await axios.post(`${API_BASE}/api/auth/register`, userData, {
+      const response = await axios.post(`${API_BASE}/auth/register`, userData, {
         headers: getHeaders(false)
       });
       
@@ -166,7 +166,7 @@ export const AuthProvider = ({ children }) => {
       // CRITICAL: Don't set loading during login attempts to avoid unmounting LandingPage
       // This prevents the modal from disappearing during login
       
-      const response = await axios.post(`${API_BASE}/api/auth/login`, {
+      const response = await axios.post(`${API_BASE}/auth/login`, {
         email,
         password
       }, {
@@ -195,7 +195,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // If we have tokens, try to logout via API
       if (tokens?.access_token && tokens?.refresh_token) {
-        await axios.post(`${API_BASE}/api/auth/logout`, {
+        await axios.post(`${API_BASE}/auth/logout`, {
           refresh_token: tokens.refresh_token
         }, {
           headers: getHeaders(true)
@@ -245,7 +245,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Not authenticated' };
       }
 
-      const response = await axios.get(`${API_BASE}/api/url-shortner/`, {
+      const response = await axios.get(`${API_BASE}/url-shortner/`, {
         params: { page, limit },
         headers: getHeaders(true)
       });
@@ -274,7 +274,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Not authenticated' };
       }
 
-      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
+      const response = await axios.get(`${API_BASE}/auth/profile`, {
         headers: getHeaders(true)
       });
 
@@ -295,7 +295,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Not authenticated' };
       }
 
-      const response = await axios.put(`${API_BASE}/api/auth/profile`, profileData, {
+      const response = await axios.put(`${API_BASE}/auth/profile`, profileData, {
         headers: getHeaders(true)
       });
 
@@ -317,7 +317,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Not authenticated' };
       }
 
-      const response = await axios.post(`${API_BASE}/api/url-shortner/delete`, {
+      const response = await axios.post(`${API_BASE}/url-shortner/delete`, {
         url_codes: urlCodes
       }, {
         headers: getHeaders(true)

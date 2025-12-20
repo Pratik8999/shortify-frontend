@@ -46,7 +46,7 @@ const Analytics = () => {
           return;
         }
         
-        const response = await axios.get(`${API_BASE}/api/url-shortner/analytics/global`, {
+        const response = await axios.get(`${API_BASE}/url-shortner/analytics/global`, {
           headers: {
             'Authorization': `Bearer ${tokens.access_token}`,
             'Content-Type': 'application/json'
@@ -105,7 +105,7 @@ const Analytics = () => {
           return;
         }
         
-        const response = await axios.get(`${API_BASE}/api/url-shortner/analytics/top-performing?limit=5`, {
+        const response = await axios.get(`${API_BASE}/url-shortner/analytics/top-performing?limit=5`, {
           headers: {
             'Authorization': `Bearer ${tokens.access_token}`,
             'Content-Type': 'application/json'

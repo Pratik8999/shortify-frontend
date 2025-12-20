@@ -121,7 +121,7 @@ const Dashboard = () => {
     setUrlData(prev => ({ ...prev, isLoading: true, error: '', success: false, existingUrlMessage: '' }));
 
     try {
-      const response = await axios.post(`${API_BASE}/api/url-shortner/`, {
+      const response = await axios.post(`${API_BASE}/url-shortner/`, {
         url: url
       }, {
         headers: {
