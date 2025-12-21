@@ -6,7 +6,7 @@ import usePageTitle from '../hooks/usePageTitle';
 const History = () => {
   usePageTitle('History');
   
-  const { fetchUrls, deleteUrls, API_BASE } = useAuth();
+  const { fetchUrls, deleteUrls, API_BASE, API_HOST } = useAuth();
   const navigate = useNavigate();
   
   const [urlHistory, setUrlHistory] = useState({
@@ -28,6 +28,11 @@ const History = () => {
     deleting: false,
     showDeleteModal: false,
     urlToDelete: null
+  });
+
+  const [copyNotification, setCopyNotification] = useState({
+    show: false,
+    message: ''
   });
 
   // Load URLs from API
@@ -69,9 +74,12 @@ const History = () => {
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
+      setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
     } catch (err) {
       console.error('Failed to copy: ', err);
+      setCopyNotification({ show: true, message: '✗ Failed to copy' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
     }
   };
 
@@ -160,6 +168,19 @@ const History = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Copy Notification Toast */}
+      {copyNotification.show && (
+        <div className="fixed top-20 right-4 z-50 animate-slide-in-right">
+          <div className={`px-6 py-3 rounded-lg shadow-lg ${
+            copyNotification.message.includes('✓') 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            {copyNotification.message}
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -279,7 +300,7 @@ const History = () => {
                       </p>
                       <div className="flex items-center mt-1">
                         <span className="text-blue-600 font-mono text-sm">
-                          {API_BASE}/{urlItem.code}
+                          {API_HOST}/{urlItem.code}
                         </span>
                         {!deleteState.selectionMode && (
                           <button
@@ -293,7 +314,7 @@ const History = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
+                          onClick={() => copyToClipboard(`${API_HOST}/${urlItem.code}`)}
                           className="ml-2 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Copy short URL"
                         >
@@ -302,7 +323,7 @@ const History = () => {
                           </svg>
                         </button>
                         <a
-                          href={`${API_BASE}/${urlItem.code}`}
+                          href={`${API_HOST}/${urlItem.code}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="ml-2 text-gray-400 hover:text-green-600 transition-colors cursor-pointer"

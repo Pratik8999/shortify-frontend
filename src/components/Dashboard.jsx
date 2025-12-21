@@ -7,7 +7,7 @@ import usePageTitle from '../hooks/usePageTitle';
 const Dashboard = () => {
   usePageTitle('Dashboard');
   
-  const { user, logout, getAuthHeader, fetchUrls, getProfile, updateProfile, deleteUrls, API_BASE } = useAuth();
+  const { user, logout, getAuthHeader, fetchUrls, getProfile, updateProfile, deleteUrls, API_BASE, API_HOST } = useAuth();
   const navigate = useNavigate();
   
   const [urlData, setUrlData] = useState({
@@ -54,6 +54,11 @@ const Dashboard = () => {
       desktop: 0
     },
     clicksOverTime: []
+  });
+
+  const [copyNotification, setCopyNotification] = useState({
+    show: false,
+    message: ''
   });
 
   const hasAnalyticsFetched = useRef(false);
@@ -199,9 +204,12 @@ const Dashboard = () => {
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
+      setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
     } catch (err) {
       console.error('Failed to copy: ', err);
+      setCopyNotification({ show: true, message: '✗ Failed to copy' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
     }
   };
 
@@ -432,6 +440,19 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      {/* Copy Notification Toast */}
+      {copyNotification.show && (
+        <div className="fixed top-20 right-4 z-50 animate-slide-in-right">
+          <div className={`px-6 py-3 rounded-lg shadow-lg ${
+            copyNotification.message.includes('✓') 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            {copyNotification.message}
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20 sticky top-0 z-40">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
@@ -702,7 +723,7 @@ const Dashboard = () => {
                 <div className="flex flex-col sm:flex-row gap-3 items-center w-full max-w-4xl mx-auto">
                   <input
                     type="text"
-                    value={`${API_BASE}/${urlData.shortCode}`}
+                    value={`${API_HOST}/${urlData.shortCode}`}
                     readOnly
                     className={`flex-1 px-4 py-3 bg-white border-2 rounded-xl font-mono text-center text-lg font-semibold ${
                       urlData.existingUrlMessage 
@@ -847,7 +868,7 @@ const Dashboard = () => {
                           {/* Short URL with actions */}
                           <div className="flex items-center mb-3">
                             <span className="text-blue-600 font-mono text-sm font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                              {API_BASE.replace('http://', '').replace('https://', '')}/{urlItem.code}
+                              {API_HOST.replace('http://', '').replace('https://', '')}/{urlItem.code}
                             </span>
                             {!deleteState.selectionMode && (
                               <button
@@ -861,7 +882,7 @@ const Dashboard = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
+                              onClick={() => copyToClipboard(`${API_HOST}/${urlItem.code}`)}
                               className="ml-3 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                               title="Copy short URL"
                             >
@@ -870,7 +891,7 @@ const Dashboard = () => {
                               </svg>
                             </button>
                             <a
-                              href={`${API_BASE}/${urlItem.code}`}
+                              href={`${API_HOST}/${urlItem.code}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="ml-2 p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"

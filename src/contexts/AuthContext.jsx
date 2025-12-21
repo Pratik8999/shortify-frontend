@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
 
   // Base API configuration
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const API_HOST = import.meta.env.VITE_API_HOST_URL || 'http://localhost:8000';
 
   // Global axios interceptor for ngrok header
   useEffect(() => {
@@ -346,7 +347,8 @@ export const AuthProvider = ({ children }) => {
     getProfile,
     updateProfile,
     deleteUrls,
-    API_BASE
+    API_BASE,
+    API_HOST
   };
 
   return (
