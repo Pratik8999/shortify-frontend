@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
+import axios from 'axios';
 
 const LandingPage = () => {
   usePageTitle('URL Shortener & Link Management');
   
   const [isLogin, setIsLogin] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { register, login } = useAuth();
+  const { register, login, API_BASE } = useAuth();
   const [formLoading, setFormLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    country: '',
     password: '',
     confirmPassword: ''
   });
@@ -57,9 +57,6 @@ const LandingPage = () => {
       if (!formData.name) {
         newErrors.name = 'Name is required';
       }
-      if (!formData.country) {
-        newErrors.country = 'Country is required';
-      }
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
       }
@@ -84,7 +81,6 @@ const LandingPage = () => {
         result = await register({
           name: formData.name,
           email: formData.email,
-          country: formData.country,
           password: formData.password
         });
       }
@@ -94,7 +90,6 @@ const LandingPage = () => {
         setFormData({
           name: '',
           email: '',
-          country: '',
           password: '',
           confirmPassword: ''
         });
@@ -115,11 +110,23 @@ const LandingPage = () => {
     setFormData({
       name: '',
       email: '',
-      country: '',
       password: '',
       confirmPassword: ''
     });
   };
+
+  // Track visit on component mount
+  useEffect(() => {
+    const trackVisit = async () => {
+      try {
+        await axios.get(`${API_BASE}/visit/track`);
+      } catch (error) {
+        // Silently fail - visit tracking shouldn't affect user experience
+        console.debug('Visit tracking failed:', error);
+      }
+    };
+    trackVisit();
+  }, [API_BASE]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
@@ -348,20 +355,6 @@ const LandingPage = () => {
                       }`}
                     />
                     {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                  </div>
-
-                  <div>
-                    <input
-                      type="text"
-                      name="country"
-                      placeholder="Country"
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        errors.country ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    />
-                    {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
                   </div>
                 </>
               )}
