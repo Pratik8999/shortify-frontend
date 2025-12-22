@@ -203,9 +203,34 @@ const Dashboard = () => {
   // Copy to clipboard
   const copyToClipboard = async (text) => {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
-      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      // Try modern Clipboard API first (works on HTTPS and localhost)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      } else {
+        // Fallback for non-secure contexts (HTTP)
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+            setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+          } else {
+            throw new Error('execCommand failed');
+          }
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
     } catch (err) {
       console.error('Failed to copy: ', err);
       setCopyNotification({ show: true, message: '✗ Failed to copy' });
