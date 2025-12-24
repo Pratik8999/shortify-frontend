@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../hooks/usePageTitle';
 import axios from 'axios';
+import ShareModal from './ShareModal';
 
 const Analytics = () => {
   usePageTitle('Analytics');
@@ -28,6 +29,12 @@ const Analytics = () => {
   const [error, setError] = useState(null);
   const hasFetched = useRef(false);
   const hasTopPerformingFetched = useRef(false);
+
+  const [shareModal, setShareModal] = useState({
+    show: false,
+    url: '',
+    title: ''
+  });
 
   // Fetch global analytics data
   useEffect(() => {
@@ -167,6 +174,29 @@ const Analytics = () => {
       'NL': '🇳🇱'
     };
     return flagMap[countryCode] || '🌍';
+  };
+
+  // Share URL function
+  const shareUrl = async (url, title = 'Check out this link from Shortify!') => {
+    // Check if Web Share API is supported
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          url: url
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+        if (err.name !== 'AbortError') {
+          console.error('Share failed:', err);
+          // Fallback to modal
+          setShareModal({ show: true, url, title });
+        }
+      }
+    } else {
+      // Web Share API not supported, show fallback modal
+      setShareModal({ show: true, url, title });
+    }
   };
 
   // Copy to clipboard
@@ -313,12 +343,23 @@ const Analytics = () => {
                           <span className="text-2xl font-bold text-gray-900">{urlItem.clicks.toLocaleString()}</span>
                         </div>
                         <p className="text-xs text-gray-500">total clicks</p>
-                        <button
-                          onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
-                          className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
-                        >
-                          Copy Link
-                        </button>
+                        <div className="flex items-center justify-end space-x-3 mt-2">
+                          <button
+                            onClick={() => shareUrl(`${API_BASE}/${urlItem.code}`, 'Check out this link from Shortify!')}
+                            className="text-xs text-purple-600 hover:text-purple-800 font-medium cursor-pointer flex items-center space-x-1"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            <span>Share</span>
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                          >
+                            Copy Link
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -491,6 +532,14 @@ const Analytics = () => {
         </>
         )}
       </main>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModal.show}
+        onClose={() => setShareModal({ show: false, url: '', title: '' })}
+        url={shareModal.url}
+        title={shareModal.title}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import usePageTitle from '../hooks/usePageTitle';
+import ShareModal from './ShareModal';
 
 const Dashboard = () => {
   usePageTitle('Dashboard');
@@ -59,6 +60,12 @@ const Dashboard = () => {
   const [copyNotification, setCopyNotification] = useState({
     show: false,
     message: ''
+  });
+
+  const [shareModal, setShareModal] = useState({
+    show: false,
+    url: '',
+    title: ''
   });
 
   const hasAnalyticsFetched = useRef(false);
@@ -151,6 +158,7 @@ const Dashboard = () => {
         const { code, message } = response.data;
         setUrlData(prev => ({
           ...prev,
+          url: '', // Clear the input field
           shortCode: code,
           success: true,
           isLoading: false,
@@ -172,6 +180,7 @@ const Dashboard = () => {
           const { short_code, message } = data;
           setUrlData(prev => ({
             ...prev,
+            url: '', // Clear the input field
             shortCode: short_code,
             success: true,
             error: '',
@@ -179,6 +188,11 @@ const Dashboard = () => {
           }));
           // Refresh recent URLs
           loadRecentUrls();
+          
+          // Clear the existing URL message after 4 seconds
+          setTimeout(() => {
+            setUrlData(prev => ({ ...prev, existingUrlMessage: '' }));
+          }, 4000);
         } else if (status === 422) {
           // Validation error
           const errorMsg = parseValidationError(data.detail);
@@ -197,6 +211,31 @@ const Dashboard = () => {
         // Other errors
         setUrlData(prev => ({ ...prev, error: 'Something went wrong. Please try again.' }));
       }
+    }
+  };
+
+  // Share URL function
+  const shareUrl = async (url, title = 'Check out this link!') => {
+    // Check if Web Share API is supported
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          url: url
+        });
+        setCopyNotification({ show: true, message: '✓ Shared successfully!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      } catch (err) {
+        // User cancelled or error occurred
+        if (err.name !== 'AbortError') {
+          console.error('Share failed:', err);
+          // Fallback to modal
+          setShareModal({ show: true, url, title });
+        }
+      }
+    } else {
+      // Web Share API not supported, show fallback modal
+      setShareModal({ show: true, url, title });
     }
   };
 
@@ -711,7 +750,7 @@ const Dashboard = () => {
               <button 
                 onClick={handleShortenUrl}
                 disabled={urlData.isLoading || !urlData.url.trim()}
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-lg whitespace-nowrap"
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-lg whitespace-nowrap cursor-pointer"
               >
                 {urlData.isLoading ? (
                   <div className="flex items-center">
@@ -761,12 +800,22 @@ const Dashboard = () => {
                     type="text"
                     value={`${API_HOST}/${urlData.shortCode}`}
                     readOnly
-                    className={`flex-1 px-4 py-3 bg-white border-2 rounded-xl font-mono text-center text-lg font-semibold ${
+                    className={`flex-1 px-4 py-3 bg-white border-2 rounded-xl font-mono text-center text-lg font-semibold cursor-pointer ${
                       urlData.existingUrlMessage 
                         ? 'border-blue-300 text-blue-700' 
                         : 'border-green-300 text-green-700'
                     }`}
                   />
+                  <button
+                    onClick={() => shareUrl(`${API_HOST}/${urlData.shortCode}`, 'Check out this link from Shortify!')}
+                    className={`px-6 py-3 text-white rounded-xl hover:scale-105 transition-all font-semibold ${
+                      urlData.existingUrlMessage 
+                        ? 'bg-purple-600 hover:bg-purple-700' 
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
+                  >
+                    🔗 Share
+                  </button>
                   <button
                     onClick={() => copyToClipboard(`${API_BASE}/${urlData.shortCode}`)}
                     className={`px-6 py-3 text-white rounded-xl hover:scale-105 transition-all font-semibold ${
@@ -918,8 +967,17 @@ const Dashboard = () => {
                               </button>
                             )}
                             <button
+                              onClick={() => shareUrl(`${API_HOST}/${urlItem.code}`, 'Check out this link from Shortify!')}
+                              className="ml-3 p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                              title="Share URL"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                              </svg>
+                            </button>
+                            <button
                               onClick={() => copyToClipboard(`${API_HOST}/${urlItem.code}`)}
-                              className="ml-3 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              className="ml-2 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                               title="Copy short URL"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1158,6 +1216,14 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModal.show}
+        onClose={() => setShareModal({ show: false, url: '', title: '' })}
+        url={shareModal.url}
+        title={shareModal.title}
+      />
     </div>
   );
 };

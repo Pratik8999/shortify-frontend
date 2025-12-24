@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../hooks/usePageTitle';
+import ShareModal from './ShareModal';
 
 const History = () => {
   usePageTitle('History');
@@ -33,6 +34,12 @@ const History = () => {
   const [copyNotification, setCopyNotification] = useState({
     show: false,
     message: ''
+  });
+
+  const [shareModal, setShareModal] = useState({
+    show: false,
+    url: '',
+    title: ''
   });
 
   // Load URLs from API
@@ -67,6 +74,31 @@ const History = () => {
   const handlePrevPage = () => {
     if (urlHistory.pagination.prev_page) {
       loadUrls(urlHistory.pagination.prev_page);
+    }
+  };
+
+  // Share URL function
+  const shareUrl = async (url, title = 'Check out this link from Shortify!') => {
+    // Check if Web Share API is supported
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          url: url
+        });
+        setCopyNotification({ show: true, message: '✓ Shared successfully!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      } catch (err) {
+        // User cancelled or error occurred
+        if (err.name !== 'AbortError') {
+          console.error('Share failed:', err);
+          // Fallback to modal
+          setShareModal({ show: true, url, title });
+        }
+      }
+    } else {
+      // Web Share API not supported, show fallback modal
+      setShareModal({ show: true, url, title });
     }
   };
 
@@ -339,6 +371,15 @@ const History = () => {
                           </button>
                         )}
                         <button
+                          onClick={() => shareUrl(`${API_HOST}/${urlItem.code}`, 'Check out this link from Shortify!')}
+                          className="ml-2 p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                          title="Share URL"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                          </svg>
+                        </button>
+                        <button
                           onClick={() => copyToClipboard(`${API_HOST}/${urlItem.code}`)}
                           className="ml-2 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Copy short URL"
@@ -502,6 +543,14 @@ const History = () => {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModal.show}
+        onClose={() => setShareModal({ show: false, url: '', title: '' })}
+        url={shareModal.url}
+        title={shareModal.title}
+      />
     </div>
   );
 };

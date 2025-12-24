@@ -97,11 +97,20 @@ const ContactUs = () => {
       setSubmitStatus('success');
       setSubmitMessage(response.data.message || 'Thank you for contacting us! We\'ll get back to you soon.');
       
-      // Clear message field after successful submission
-      setFormData(prev => ({
-        ...prev,
-        message: ''
-      }));
+      // Clear all fields after successful submission (only message for logged-in users)
+      if (user?.isAuthenticated) {
+        setFormData(prev => ({
+          ...prev,
+          message: ''
+        }));
+      } else {
+        // Clear all fields for non-logged-in users
+        setFormData({
+          name: '',
+          email: '',
+          message: ''
+        });
+      }
     } catch (error) {
       setSubmitStatus('error');
       setSubmitMessage(
