@@ -4,6 +4,10 @@ import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import Analytics from './components/Analytics';
 import History from './components/History';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
+import ContactUs from './components/ContactUs';
+import HelpCenter from './components/HelpCenter';
 import './App.css'
 import './index.css'
 
@@ -23,8 +27,20 @@ function AppContent() {
     );
   }
 
+  // Public routes accessible to everyone
+  const publicRoutes = (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/contact" element={<ContactUs />} />
+      <Route path="/help" element={<HelpCenter />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+
   if (!user?.isAuthenticated) {
-    return <LandingPage />;
+    return publicRoutes;
   }
 
   return (
@@ -33,6 +49,10 @@ function AppContent() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/history" element={<History />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/contact" element={<ContactUs />} />
+      <Route path="/help" element={<HelpCenter />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

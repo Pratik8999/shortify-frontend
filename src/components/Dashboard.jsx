@@ -375,7 +375,7 @@ const Dashboard = () => {
     // Track visit
     const trackVisit = async () => {
       try {
-        await axios.get(`${API_BASE}/visit/track`);
+        await axios.get(`${API_BASE}/info/ping`);
       } catch (error) {
         // Silently fail - visit tracking shouldn't affect user experience
         console.debug('Visit tracking failed:', error);
