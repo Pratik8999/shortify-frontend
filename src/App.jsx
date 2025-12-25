@@ -4,6 +4,7 @@ import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import Analytics from './components/Analytics';
 import History from './components/History';
+import Features from './components/Features';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import ContactUs from './components/ContactUs';
@@ -14,9 +15,8 @@ import './index.css'
 function AppContent() {
   const { user, loading } = useAuth();
 
-  // Only show loading screen on very first app load (when user is undefined)
-  // Don't show it during login/register attempts (when user is null)
-  if (loading && user === undefined) {
+  // Show loading screen while authentication state is being determined
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -31,6 +31,7 @@ function AppContent() {
   const publicRoutes = (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/features" element={<Features />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/contact" element={<ContactUs />} />
@@ -49,6 +50,7 @@ function AppContent() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/history" element={<History />} />
+      <Route path="/features" element={<Features />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/contact" element={<ContactUs />} />

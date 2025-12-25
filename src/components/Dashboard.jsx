@@ -75,6 +75,8 @@ const Dashboard = () => {
     updating: false
   });
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const hasAnalyticsFetched = useRef(false);
 
   // Helper function to get flag emoji from country code
@@ -604,9 +606,26 @@ const Dashboard = () => {
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+                aria-label="Toggle menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+              
+              <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 ⚡ Shortify
               </div>
+              
+              {/* Desktop Navigation */}
               <nav className="hidden md:flex space-x-6">
                 <button
                   onClick={() => navigate('/dashboard')}
@@ -628,7 +647,7 @@ const Dashboard = () => {
                 </button>
               </nav>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Greeting */}
               {profile.data && (
                 <div className="text-right hidden sm:block">
@@ -664,6 +683,41 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+          
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 pt-4 pb-2 mt-4">
+              <nav className="flex flex-col space-y-2">
+                <button
+                  onClick={() => {
+                    navigate('/dashboard');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-blue-600 font-medium bg-blue-50 rounded-lg cursor-pointer"
+                >
+                  📊 Dashboard
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/analytics');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  📈 Analytics
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/history');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  🕒 History
+                </button>
+              </nav>
+            </div>
+          )}
         </div>
       </header>
 
@@ -795,10 +849,10 @@ const Dashboard = () => {
         {/* Hero Section - URL Shortener */}
         <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8 lg:p-12 mb-8 max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
               Shorten Your URLs Instantly
             </h1>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
               Transform long, complex URLs into short, shareable links that are perfect for social media, emails, and more.
             </p>
           </div>
@@ -813,7 +867,7 @@ const Dashboard = () => {
                   value={urlData.url}
                   onChange={handleUrlChange}
                   disabled={urlData.isLoading}
-                  className={`w-full px-6 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all text-lg ${
+                  className={`w-full px-4 sm:px-6 py-3 sm:py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all text-base sm:text-lg ${
                     urlData.error ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300 focus:border-blue-500'
                   } ${urlData.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
@@ -821,7 +875,7 @@ const Dashboard = () => {
               <button 
                 onClick={handleShortenUrl}
                 disabled={urlData.isLoading || !urlData.url.trim()}
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-lg whitespace-nowrap cursor-pointer"
+                className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-base sm:text-lg whitespace-nowrap cursor-pointer"
               >
                 {urlData.isLoading ? (
                   <div className="flex items-center">
@@ -925,12 +979,12 @@ const Dashboard = () => {
           {/* Left Column - Recent URLs (3/4 width) */}
           <div className="lg:col-span-3">
             <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900">Recent URLs</h2>
-                  <p className="text-gray-600 mt-1">Your latest shortened links</p>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Recent URLs</h2>
+                  <p className="text-gray-600 mt-1 text-sm sm:text-base">Your latest shortened links</p>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap">
                   {!deleteState.selectionMode && recentUrls.data.length > 0 && (
                     <button
                       onClick={toggleSelectionMode}
@@ -1208,7 +1262,7 @@ const Dashboard = () => {
           <div className="lg:col-span-1">
             <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                   📊 Quick Stats
                 </h2>
                 <button
@@ -1220,21 +1274,21 @@ const Dashboard = () => {
               </div>
 
               {/* Overview Stats */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{analyticsData.totalUrls}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 text-center">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600">{analyticsData.totalUrls}</div>
                   <div className="text-xs text-blue-600 font-medium">URLs</div>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 sm:p-4 text-center">
+                  <div className="text-xl sm:text-2xl font-bold text-green-600">
                     {analyticsData.totalClicks >= 1000 
                       ? `${(analyticsData.totalClicks/1000).toFixed(1)}k` 
                       : analyticsData.totalClicks}
                   </div>
                   <div className="text-xs text-green-600 font-medium">Clicks</div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-purple-600">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 sm:p-4 text-center col-span-2 sm:col-span-1">
+                  <div className="text-xl sm:text-2xl font-bold text-purple-600">
                     {analyticsData.thisMonthClicks >= 1000 
                       ? `${(analyticsData.thisMonthClicks/1000).toFixed(1)}k` 
                       : analyticsData.thisMonthClicks}

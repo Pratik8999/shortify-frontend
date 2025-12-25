@@ -36,6 +36,8 @@ const Analytics = () => {
     title: ''
   });
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Fetch global analytics data
   useEffect(() => {
     const fetchGlobalAnalytics = async () => {
@@ -211,42 +213,93 @@ const Analytics = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+                aria-label="Toggle menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+              
               <button
                 onClick={() => navigate('/dashboard')}
-                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer hidden md:block"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
               </button>
-              <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              
+              <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                 Analytics Dashboard
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer text-sm"
               >
-                Back to Dashboard
+                Dashboard
               </button>
               <button
                 onClick={logout}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors cursor-pointer text-sm"
               >
                 Logout
               </button>
             </div>
           </div>
+          
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 pt-4 pb-2 mt-4">
+              <nav className="flex flex-col space-y-2">
+                <button
+                  onClick={() => {
+                    navigate('/dashboard');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  📊 Dashboard
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/analytics');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-blue-600 font-medium bg-blue-50 rounded-lg cursor-pointer"
+                >
+                  📈 Analytics
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/history');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  🕒 History
+                </button>
+              </nav>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Loading State */}
         {loading && (
           <div className="flex justify-center items-center py-12">
