@@ -17,7 +17,8 @@ const Dashboard = () => {
     isLoading: false,
     error: '',
     success: false,
-    existingUrlMessage: ''
+    existingUrlMessage: '',
+    title: ''
   });
 
   const [recentUrls, setRecentUrls] = useState({
@@ -66,6 +67,12 @@ const Dashboard = () => {
     show: false,
     url: '',
     title: ''
+  });
+
+  const [titleEdit, setTitleEdit] = useState({
+    editingId: null,
+    editValue: '',
+    updating: false
   });
 
   const hasAnalyticsFetched = useRef(false);
@@ -155,11 +162,12 @@ const Dashboard = () => {
 
       // Success (201 Created)
       if (response.status === 201) {
-        const { code, message } = response.data;
+        const { code, message, title } = response.data;
         setUrlData(prev => ({
           ...prev,
           url: '', // Clear the input field
           shortCode: code,
+          title: title || '',
           success: true,
           isLoading: false,
           error: ''
@@ -177,21 +185,22 @@ const Dashboard = () => {
 
         if (status === 400) {
           // URL already exists
-          const { short_code, message } = data;
+          const { short_code, message, title } = data;
           setUrlData(prev => ({
             ...prev,
             url: '', // Clear the input field
             shortCode: short_code,
-            success: true,
+            title: title || '',
+            success: false,
             error: '',
             existingUrlMessage: message || 'URL already exists'
           }));
           // Refresh recent URLs
           loadRecentUrls();
           
-          // Clear the existing URL message after 4 seconds
+          // Clear the existing URL message and shortCode after 4 seconds
           setTimeout(() => {
-            setUrlData(prev => ({ ...prev, existingUrlMessage: '' }));
+            setUrlData(prev => ({ ...prev, existingUrlMessage: '', shortCode: '' }));
           }, 4000);
         } else if (status === 422) {
           // Validation error
@@ -509,8 +518,70 @@ const Dashboard = () => {
       isLoading: false,
       error: '',
       success: false,
-      existingUrlMessage: ''
+      existingUrlMessage: '',
+      title: ''
     });
+  };
+
+  // Start editing title
+  const startEditTitle = (urlId, currentTitle) => {
+    setTitleEdit({
+      editingId: urlId,
+      editValue: currentTitle || '',
+      updating: false
+    });
+  };
+
+  // Cancel editing title
+  const cancelEditTitle = () => {
+    setTitleEdit({
+      editingId: null,
+      editValue: '',
+      updating: false
+    });
+  };
+
+  // Update title via API
+  const updateTitle = async (urlCode) => {
+    const trimmedTitle = titleEdit.editValue.trim();
+    
+    setTitleEdit(prev => ({ ...prev, updating: true }));
+
+    try {
+      const response = await axios.put(`${API_BASE}/url-shortner/`, {
+        url_id: urlCode,
+        title: trimmedTitle === '' ? null : trimmedTitle
+      }, {
+        headers: {
+          Authorization: getAuthHeader(),
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 200) {
+        // Update the local state
+        setRecentUrls(prev => ({
+          ...prev,
+          data: prev.data.map(url => 
+            url.id === urlCode 
+              ? { ...url, title: trimmedTitle === '' ? null : trimmedTitle }
+              : url
+          )
+        }));
+
+        // Clear edit state
+        cancelEditTitle();
+        
+        // Show success notification
+        setCopyNotification({ show: true, message: '✓ Title updated!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      setCopyNotification({ show: true, message: '✗ Failed to update title' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      setTitleEdit(prev => ({ ...prev, updating: false }));
+    }
   };
 
   return (
@@ -779,7 +850,7 @@ const Dashboard = () => {
             )}
 
             {/* Success Message with Short URL */}
-            {urlData.success && urlData.shortCode && (
+            {(urlData.success || urlData.existingUrlMessage) && urlData.shortCode && (
               <div className={`border-2 rounded-2xl p-6 text-center ${
                 urlData.existingUrlMessage 
                   ? 'bg-blue-50 border-blue-200' 
@@ -795,6 +866,17 @@ const Dashboard = () => {
                     : '🎉 Short URL created successfully!'
                   }
                 </p>
+                
+                {/* Link Title Display */}
+                {urlData.title && urlData.title !== null && urlData.title.trim() !== '' ? (
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-600 mb-1">Link Title:</p>
+                    <p className="text-lg font-semibold text-gray-800">📝 {urlData.title}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic mb-3">No title set for this link</p>
+                )}
+                
                 <div className="flex flex-col sm:flex-row gap-3 items-center w-full max-w-4xl mx-auto">
                   <input
                     type="text"
@@ -996,6 +1078,68 @@ const Dashboard = () => {
                               </svg>
                             </a>
                           </div>
+                          
+                          {/* Title display - below short URL, above stats */}
+                          {titleEdit.editingId === urlItem.id ? (
+                            <div className="flex items-center gap-2 mt-1 mb-1">
+                              <input
+                                type="text"
+                                value={titleEdit.editValue}
+                                onChange={(e) => {
+                                  if (e.target.value.length <= 15) {
+                                    setTitleEdit(prev => ({ ...prev, editValue: e.target.value }));
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !titleEdit.updating) {
+                                    updateTitle(urlItem.id);
+                                  }
+                                }}
+                                maxLength={15}
+                                placeholder="Enter title (max 15 chars)"
+                                disabled={titleEdit.updating}
+                                className="flex-1 px-3 py-1.5 text-sm border-2 border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                autoFocus
+                              />
+                              <span className="text-xs text-gray-500">{titleEdit.editValue.length}/15</span>
+                              <button
+                                onClick={() => updateTitle(urlItem.id)}
+                                disabled={titleEdit.updating}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                                title="Save title"
+                              >
+                                {titleEdit.updating ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                ) : (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </button>
+                              <button
+                                onClick={cancelEditTitle}
+                                disabled={titleEdit.updating}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                                title="Cancel"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => startEditTitle(urlItem.id, urlItem.title)}
+                              className="cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 mt-1 mb-1 inline-block"
+                              title="Click to edit title"
+                            >
+                              {urlItem.title && urlItem.title !== null && urlItem.title.trim() !== '' ? (
+                                <p className="text-sm text-gray-700 font-semibold">🏷️ {urlItem.title}</p>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic">No title</p>
+                              )}
+                            </div>
+                          )}
                           
                           {/* Stats */}
                           {urlItem.click_count !== undefined && (

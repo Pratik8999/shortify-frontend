@@ -3,12 +3,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../hooks/usePageTitle';
 import ShareModal from './ShareModal';
+import axios from 'axios';
 
 const History = () => {
   usePageTitle('History');
   
   const { fetchUrls, deleteUrls, API_BASE, API_HOST } = useAuth();
   const navigate = useNavigate();
+  
+  // Get auth header function
+  const getAuthHeader = () => {
+    const tokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+    return tokens.access_token ? `Bearer ${tokens.access_token}` : null;
+  };
   
   const [urlHistory, setUrlHistory] = useState({
     data: [],
@@ -21,6 +28,12 @@ const History = () => {
       total_pages: 1,
       total_items: 0
     }
+  });
+
+  const [dateFilter, setDateFilter] = useState({
+    startDate: '',
+    endDate: '',
+    error: ''
   });
 
   const [deleteState, setDeleteState] = useState({
@@ -42,11 +55,18 @@ const History = () => {
     title: ''
   });
 
+  const [titleEdit, setTitleEdit] = useState({
+    editingId: null,
+    editValue: '',
+    updating: false
+  });
+
   // Load URLs from API
-  const loadUrls = async (page = 1, limit = 10) => {
+  const loadUrls = async (page = 1, limit = 10, filters = {}) => {
     setUrlHistory(prev => ({ ...prev, loading: true, error: '' }));
+    setDateFilter(prev => ({ ...prev, error: '' }));
     
-    const result = await fetchUrls(page, limit);
+    const result = await fetchUrls(page, limit, filters);
     
     if (result.success) {
       setUrlHistory({
@@ -67,13 +87,135 @@ const History = () => {
   // Handle pagination
   const handleNextPage = () => {
     if (urlHistory.pagination.next_page) {
-      loadUrls(urlHistory.pagination.next_page);
+      const filters = buildFilters();
+      loadUrls(urlHistory.pagination.next_page, 10, filters);
     }
   };
 
   const handlePrevPage = () => {
     if (urlHistory.pagination.prev_page) {
-      loadUrls(urlHistory.pagination.prev_page);
+      const filters = buildFilters();
+      loadUrls(urlHistory.pagination.prev_page, 10, filters);
+    }
+  };
+
+  // Build filters object from date inputs
+  const buildFilters = () => {
+    const filters = {};
+    if (dateFilter.startDate) {
+      filters.from_date = dateFilter.startDate;
+    }
+    if (dateFilter.endDate) {
+      filters.to_date = dateFilter.endDate;
+    }
+    return filters;
+  };
+
+  // Validate date range (max 60 days)
+  const validateDateRange = (start, end) => {
+    if (!start || !end) return true;
+    
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    // Check if end date is before start date
+    if (endDate < startDate) {
+      setDateFilter(prev => ({ ...prev, error: 'End date must be after start date' }));
+      return false;
+    }
+    
+    // Calculate difference in days
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 60) {
+      setDateFilter(prev => ({ ...prev, error: 'Date range cannot exceed 60 days' }));
+      return false;
+    }
+    
+    setDateFilter(prev => ({ ...prev, error: '' }));
+    return true;
+  };
+
+  // Handle date filter change
+  const handleDateChange = (field, value) => {
+    setDateFilter(prev => ({ ...prev, [field]: value, error: '' }));
+  };
+
+  // Apply date filter
+  const applyDateFilter = () => {
+    if (!validateDateRange(dateFilter.startDate, dateFilter.endDate)) {
+      return;
+    }
+    
+    const filters = buildFilters();
+    loadUrls(1, 10, filters);
+  };
+
+  // Clear date filter
+  const clearDateFilter = () => {
+    setDateFilter({ startDate: '', endDate: '', error: '' });
+    loadUrls(1, 10, {});
+  };
+
+  // Start editing title
+  const startEditTitle = (urlId, currentTitle) => {
+    setTitleEdit({
+      editingId: urlId,
+      editValue: currentTitle || '',
+      updating: false
+    });
+  };
+
+  // Cancel editing title
+  const cancelEditTitle = () => {
+    setTitleEdit({
+      editingId: null,
+      editValue: '',
+      updating: false
+    });
+  };
+
+  // Update title via API
+  const updateTitle = async (urlCode) => {
+    const trimmedTitle = titleEdit.editValue.trim();
+    
+    setTitleEdit(prev => ({ ...prev, updating: true }));
+
+    try {
+      const response = await axios.put(`${API_BASE}/url-shortner/`, {
+        url_id: urlCode,
+        title: trimmedTitle === '' ? null : trimmedTitle
+      }, {
+        headers: {
+          Authorization: getAuthHeader(),
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 200) {
+        // Update the local state
+        setUrlHistory(prev => ({
+          ...prev,
+          data: prev.data.map(url => 
+            url.id === urlCode 
+              ? { ...url, title: trimmedTitle === '' ? null : trimmedTitle }
+              : url
+          )
+        }));
+
+        // Clear edit state
+        cancelEditTitle();
+        
+        // Show success notification
+        setCopyNotification({ show: true, message: '✓ Title updated!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      setCopyNotification({ show: true, message: '✗ Failed to update title' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      setTitleEdit(prev => ({ ...prev, updating: false }));
     }
   };
 
@@ -263,7 +405,7 @@ const History = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="bg-white rounded-2xl shadow-sm p-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
             <h3 className="text-xl font-semibold text-gray-800">
               Your Complete URL History
               {urlHistory.pagination.total_items > 0 && (
@@ -272,6 +414,62 @@ const History = () => {
                 </span>
               )}
             </h3>
+            
+            {/* Date Filter - Right Corner */}
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={dateFilter.startDate}
+                  onChange={(e) => handleDateChange('startDate', e.target.value)}
+                  placeholder="Start Date"
+                  className="px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                />
+                <span className="text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={dateFilter.endDate}
+                  onChange={(e) => handleDateChange('endDate', e.target.value)}
+                  placeholder="End Date"
+                  className="px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                />
+                <button
+                  onClick={applyDateFilter}
+                  disabled={!dateFilter.startDate && !dateFilter.endDate}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Search URLs"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                {(dateFilter.startDate || dateFilter.endDate) && (
+                  <button
+                    onClick={clearDateFilter}
+                    className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer"
+                    title="Clear filter"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {dateFilter.error && (
+                <div className="text-xs text-red-600 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {dateFilter.error}
+                </div>
+              )}
+              {!dateFilter.error && (dateFilter.startDate || dateFilter.endDate) && (
+                <p className="text-xs text-gray-500">Max 60 days range</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center mb-6">
             
             {/* Selection Mode Toggle */}
             {urlHistory.data.length > 0 && (
@@ -400,6 +598,67 @@ const History = () => {
                           </svg>
                         </a>
                       </div>
+                      {/* Title display - below short URL, above stats */}
+                      {titleEdit.editingId === urlItem.id ? (
+                        <div className="flex items-center gap-2 mt-1 mb-1">
+                          <input
+                            type="text"
+                            value={titleEdit.editValue}
+                            onChange={(e) => {
+                              if (e.target.value.length <= 15) {
+                                setTitleEdit(prev => ({ ...prev, editValue: e.target.value }));
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !titleEdit.updating) {
+                                updateTitle(urlItem.id);
+                              }
+                            }}
+                            maxLength={15}
+                            placeholder="Enter title (max 15 chars)"
+                            disabled={titleEdit.updating}
+                            className="flex-1 px-3 py-1.5 text-sm border-2 border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <span className="text-xs text-gray-500">{titleEdit.editValue.length}/15</span>
+                          <button
+                            onClick={() => updateTitle(urlItem.id)}
+                            disabled={titleEdit.updating}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                            title="Save title"
+                          >
+                            {titleEdit.updating ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            onClick={cancelEditTitle}
+                            disabled={titleEdit.updating}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                            title="Cancel"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => startEditTitle(urlItem.id, urlItem.title)}
+                          className="cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5 mt-1 mb-1 inline-block"
+                          title="Click to edit title"
+                        >
+                          {urlItem.title && urlItem.title !== null && urlItem.title.trim() !== '' ? (
+                            <p className="text-sm text-gray-700 font-semibold">🏷️ {urlItem.title}</p>
+                          ) : (
+                            <p className="text-sm text-gray-400 italic">No title</p>
+                          )}
+                        </div>
+                      )}
                       {urlItem.click_count !== undefined && (
                         <div className="mt-2">
                           <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">

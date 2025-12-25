@@ -239,15 +239,25 @@ export const AuthProvider = ({ children }) => {
     return headers;
   };
 
-  const fetchUrls = async (page = 1, limit = 10) => {
+  const fetchUrls = async (page = 1, limit = 10, filters = {}) => {
     try {
       const authHeader = getAuthHeader();
       if (!authHeader) {
         return { success: false, message: 'Not authenticated' };
       }
 
+      const params = { page, limit };
+      
+      // Add date filters if provided
+      if (filters.from_date) {
+        params.from_date = filters.from_date;
+      }
+      if (filters.to_date) {
+        params.to_date = filters.to_date;
+      }
+
       const response = await axios.get(`${API_BASE}/url-shortner/`, {
-        params: { page, limit },
+        params,
         headers: getHeaders(true)
       });
 
