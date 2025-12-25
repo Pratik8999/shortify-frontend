@@ -8,7 +8,7 @@ import ShareModal from './ShareModal';
 const Analytics = () => {
   usePageTitle('Analytics');
   
-  const { user, logout, API_BASE } = useAuth();
+  const { user, logout, API_BASE, API_HOST } = useAuth();
   const navigate = useNavigate();
   
   const [analyticsData, setAnalyticsData] = useState({
@@ -37,6 +37,17 @@ const Analytics = () => {
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [copyNotification, setCopyNotification] = useState({
+    show: false,
+    message: ''
+  });
+
+  const [titleEdit, setTitleEdit] = useState({
+    editingId: null,
+    editValue: '',
+    updating: false
+  });
 
   // Fetch global analytics data
   useEffect(() => {
@@ -125,9 +136,10 @@ const Analytics = () => {
         
         // Transform the API response
         const transformedData = topPerformingData.map(item => ({
-          id: item.code,
+          id: item.id,
           url: item.url,
           code: item.code,
+          title: item.title || '',
           clicks: item.total_clicks,
           createdDate: new Date(item.created_at * 1000).toISOString().split('T')[0],
           countries: item.countries.map(country => ({
@@ -187,6 +199,8 @@ const Analytics = () => {
           title: title,
           url: url
         });
+        setCopyNotification({ show: true, message: '✓ Shared successfully!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
       } catch (err) {
         // User cancelled or error occurred
         if (err.name !== 'AbortError') {
@@ -204,14 +218,119 @@ const Analytics = () => {
   // Copy to clipboard
   const copyToClipboard = async (text) => {
     try {
-      await navigator.clipboard.writeText(text);
+      // Try modern Clipboard API first (works on HTTPS and localhost)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      } else {
+        // Fallback for non-secure contexts (HTTP)
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setCopyNotification({ show: true, message: '✓ Copied to clipboard!' });
+            setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+          } else {
+            throw new Error('execCommand failed');
+          }
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
     } catch (err) {
       console.error('Failed to copy: ', err);
+      setCopyNotification({ show: true, message: '✗ Failed to copy' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+    }
+  };
+
+  // Start editing title
+  const startEditTitle = (urlCode, currentTitle) => {
+    setTitleEdit({
+      editingId: urlCode,
+      editValue: currentTitle || '',
+      updating: false
+    });
+  };
+
+  // Cancel title edit
+  const cancelEditTitle = () => {
+    setTitleEdit({
+      editingId: null,
+      editValue: '',
+      updating: false
+    });
+  };
+
+  // Update title via API
+  const updateTitle = async (urlCode) => {
+    const trimmedTitle = titleEdit.editValue.trim();
+    
+    setTitleEdit(prev => ({ ...prev, updating: true }));
+
+    try {
+      const tokens = JSON.parse(localStorage.getItem('shortify_tokens') || '{}');
+      
+      const response = await axios.put(`${API_BASE}/url-shortner/`, {
+        url_id: urlCode,
+        title: trimmedTitle === '' ? null : trimmedTitle
+      }, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 200) {
+        // Update the local state
+        setAnalyticsData(prev => ({
+          ...prev,
+          topPerformingUrls: prev.topPerformingUrls.map(url => 
+            url.id === urlCode 
+              ? { ...url, title: trimmedTitle === '' ? null : trimmedTitle }
+              : url
+          )
+        }));
+
+        // Clear edit state
+        cancelEditTitle();
+        
+        // Show success notification
+        setCopyNotification({ show: true, message: '✓ Title updated!' });
+        setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      setCopyNotification({ show: true, message: '✗ Failed to update title' });
+      setTimeout(() => setCopyNotification({ show: false, message: '' }), 2000);
+      setTitleEdit(prev => ({ ...prev, updating: false }));
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Copy Notification Toast */}
+      {copyNotification.show && (
+        <div className="fixed top-20 right-4 z-50 animate-slide-in-right">
+          <div className={`px-6 py-3 rounded-lg shadow-lg ${
+            copyNotification.message.includes('✓') 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            {copyNotification.message}
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -386,10 +505,74 @@ const Analytics = () => {
                         </p>
                         <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
                           <span className="text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded">
-                            {API_BASE.replace('https://', '').replace('http://', '')}/{urlItem.code}
+                            {API_HOST.replace('https://', '').replace('http://', '')}/{urlItem.code}
                           </span>
                           <span>Created: {new Date(urlItem.createdDate).toLocaleDateString()}</span>
                         </div>
+                        
+                        {/* Title display with edit functionality */}
+                        {titleEdit.editingId === urlItem.id ? (
+                          <div className="flex items-center gap-2 mb-2">
+                            <input
+                              type="text"
+                              value={titleEdit.editValue}
+                              onChange={(e) => {
+                                if (e.target.value.length <= 15) {
+                                  setTitleEdit(prev => ({ ...prev, editValue: e.target.value }));
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !titleEdit.updating) {
+                                  updateTitle(urlItem.id);
+                                } else if (e.key === 'Escape') {
+                                  cancelEditTitle();
+                                }
+                              }}
+                              maxLength={15}
+                              placeholder="Enter title (max 15 chars)"
+                              disabled={titleEdit.updating}
+                              className="flex-1 px-2 py-1 text-sm border-2 border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              autoFocus
+                            />
+                            <span className="text-xs text-gray-500">{titleEdit.editValue.length}/15</span>
+                            <button
+                              onClick={() => updateTitle(urlItem.id)}
+                              disabled={titleEdit.updating}
+                              className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                              title="Save title"
+                            >
+                              {titleEdit.updating ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              onClick={cancelEditTitle}
+                              disabled={titleEdit.updating}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer disabled:opacity-50"
+                              title="Cancel"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => startEditTitle(urlItem.id, urlItem.title)}
+                            className="cursor-pointer hover:bg-gray-50 rounded px-2 py-1 mb-2 inline-block"
+                            title="Click to edit title"
+                          >
+                            {urlItem.title && urlItem.title.trim() !== '' ? (
+                              <p className="text-sm text-gray-700 font-semibold">🏷️ {urlItem.title}</p>
+                            ) : (
+                              <p className="text-sm text-gray-400 italic">No title</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-center space-x-2 mb-1">
@@ -398,7 +581,7 @@ const Analytics = () => {
                         <p className="text-xs text-gray-500">total clicks</p>
                         <div className="flex items-center justify-end space-x-3 mt-2">
                           <button
-                            onClick={() => shareUrl(`${API_BASE}/${urlItem.code}`, 'Check out this link from Shortify!')}
+                            onClick={() => shareUrl(`${API_HOST}/${urlItem.code}`, 'Check out this link from Shortify!')}
                             className="text-xs text-purple-600 hover:text-purple-800 font-medium cursor-pointer flex items-center space-x-1"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,7 +590,7 @@ const Analytics = () => {
                             <span>Share</span>
                           </button>
                           <button
-                            onClick={() => copyToClipboard(`${API_BASE}/${urlItem.code}`)}
+                            onClick={() => copyToClipboard(`${API_HOST}/${urlItem.code}`)}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
                           >
                             Copy Link
