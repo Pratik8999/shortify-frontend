@@ -10,6 +10,8 @@ const LandingPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { register, login, API_BASE } = useAuth();
   const [formLoading, setFormLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +38,13 @@ const LandingPage = () => {
         [name]: ''
       }));
     }
+  };
+
+  const handleTogglePassword = () => {
+    setShowPassword(prev => !prev);
+  };
+  const handleToggleConfirmPassword = () => {
+    setShowConfirmPassword(prev => !prev);
   };
 
   const validateForm = () => {
@@ -370,32 +379,70 @@ const LandingPage = () => {
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
               </div>
 
-              <div>
+              <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder="Password"
                   value={formData.password}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                     errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                  }`}
+                  } pr-12`}
                 />
+                <button
+                  type="button"
+                  onClick={handleTogglePassword}
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.11-6.13M6.13 6.13A9.96 9.96 0 012 9c0 5.523 4.477 10 10 10 1.03 0 2.03-.155 2.98-.445M17.87 17.87A9.96 9.96 0 0022 15c0-5.523-4.477-10-10-10-1.03 0-2.03.155-2.98.445" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-.274.835-.642 1.627-1.102 2.354M15.536 15.536A5.978 5.978 0 0112 17c-2.21 0-4.21-.896-5.536-2.464" />
+                    </svg>
+                  )}
+                </button>
                 {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
               </div>
 
               {!isLogin && (
-                <div>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     placeholder="Confirm Password"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                       errors.confirmPassword ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    } pr-12`}
                   />
+                  <button
+                    type="button"
+                    onClick={handleToggleConfirmPassword}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 focus:outline-none"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.11-6.13M6.13 6.13A9.96 9.96 0 012 9c0 5.523 4.477 10 10 10 1.03 0 2.03-.155 2.98-.445M17.87 17.87A9.96 9.96 0 0022 15c0-5.523-4.477-10-10-10-1.03 0-2.03.155-2.98.445" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-.274.835-.642 1.627-1.102 2.354M15.536 15.536A5.978 5.978 0 0112 17c-2.21 0-4.21-.896-5.536-2.464" />
+                      </svg>
+                    )}
+                  </button>
                   {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
                 </div>
               )}
