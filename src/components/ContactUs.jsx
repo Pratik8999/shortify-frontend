@@ -303,7 +303,7 @@ const ContactUs = () => {
       <footer className="mt-12 bg-gray-900 text-white py-8">
         <div className="max-w-4xl mx-auto px-5 text-center">
           <p className="text-gray-400 text-sm">
-            © 2025 Shortify. All rights reserved.
+            © 2026 Shortify. All rights reserved.
           </p>
         </div>
       </footer>

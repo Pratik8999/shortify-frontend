@@ -31,7 +31,7 @@ const PrivacyPolicy = () => {
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Privacy Policy
           </h1>
-          <p className="text-gray-500 mb-8">Last updated: December 24, 2025</p>
+          <p className="text-gray-500 mb-8">Last updated: January 19, 2026</p>
 
           <div className="space-y-8 text-gray-700">
             {/* Introduction */}
@@ -215,7 +215,7 @@ const PrivacyPolicy = () => {
       <footer className="mt-12 bg-gray-900 text-white py-8">
         <div className="max-w-4xl mx-auto px-5 text-center">
           <p className="text-gray-400 text-sm">
-            © 2025 Shortify. All rights reserved.
+            © 2026 Shortify. All rights reserved.
           </p>
         </div>
       </footer>

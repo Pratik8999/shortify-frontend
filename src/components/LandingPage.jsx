@@ -315,7 +315,7 @@ const LandingPage = () => {
           
           <div className="border-t border-gray-700 mt-6 pt-6 text-center">
             <p className="text-gray-400 text-sm">
-              © 2025 Shortify. All rights reserved.
+              © 2026 Shortify. All rights reserved.
             </p>
             <p className="text-gray-400 text-sm mt-2">
               Made with ❤️ by <span className="text-blue-400 font-medium">Pratik Joshi</span>
