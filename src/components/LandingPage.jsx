@@ -58,8 +58,18 @@ const LandingPage = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one digit';
+    } else if (!/[!@#$%^&*()]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one special character (!@#$%^&*())';
+    } else if (!/^[A-Za-z\d!@#$%^&*()]+$/.test(formData.password)) {
+      newErrors.password = 'Password can only contain letters, digits, and !@#$%^&*()';
     }
 
     if (!isLogin) {
@@ -410,6 +420,25 @@ const LandingPage = () => {
                   )}
                 </button>
                 {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                {!isLogin && formData.password && !errors.password && (
+                  <div className="mt-2 space-y-1 text-xs">
+                    <p className={/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-gray-400'}>
+                      {/[A-Z]/.test(formData.password) ? '✓' : '○'} At least one uppercase letter
+                    </p>
+                    <p className={/[a-z]/.test(formData.password) ? 'text-green-500' : 'text-gray-400'}>
+                      {/[a-z]/.test(formData.password) ? '✓' : '○'} At least one lowercase letter
+                    </p>
+                    <p className={/\d/.test(formData.password) ? 'text-green-500' : 'text-gray-400'}>
+                      {/\d/.test(formData.password) ? '✓' : '○'} At least one digit
+                    </p>
+                    <p className={/[!@#$%^&*()]/.test(formData.password) ? 'text-green-500' : 'text-gray-400'}>
+                      {/[!@#$%^&*()]/.test(formData.password) ? '✓' : '○'} At least one special character (!@#$%^&*())
+                    </p>
+                    <p className={formData.password.length >= 8 ? 'text-green-500' : 'text-gray-400'}>
+                      {formData.password.length >= 8 ? '✓' : '○'} At least 8 characters
+                    </p>
+                  </div>
+                )}
               </div>
 
               {!isLogin && (
